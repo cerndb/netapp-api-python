@@ -5,6 +5,13 @@ sys.path.append("./lib/NetApp/")
 
 from NaServer import *
 
+# HACK WARNING
+# This is an override for allowing self-signed server certificates:
+
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+
 ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
 
@@ -50,20 +57,25 @@ class Server():
     def events(self):
         return Server.EventLog(self)
 
-    def __init__(self, hostname, port=443, transport_type="HTTPS",
-                 server_type="OCUM"):
+    def __init__(self, hostname, username, password, port=443,
+                 transport_type="HTTPS", server_type="OCUM"):
+
         self.server = NaServer(hostname, ONTAP_MAJORVERSION,
                                ONTAP_MINORVERSION)
 
-        self.server.set_style("LOGIN")
-        self.server.set_transport_type(transport_type)
         self.server.set_server_type(server_type)
+
+        self.server.set_transport_type(transport_type)
         self.server.set_port(port)
 
         # FIXME: this is a workaround. DO NOT LEAVE ON!
         self.server.set_server_cert_verification(False)
 
         self.server.set_application_name(APP_NAME)
+
+        ## FIXME: support other auth methods!
+        self.server.set_style("LOGIN")
+        self.server.set_admin_user(username, password)
 
 
 class Event():
