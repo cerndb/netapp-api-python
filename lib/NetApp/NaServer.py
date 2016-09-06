@@ -37,7 +37,7 @@ if(python_version < 3.0):
 else :
     import http.client
     httplib = http.client
-	
+
 #dtd files
 FILER_dtd = "file:/etc/netapp_filer.dtd"
 DFM_dtd = "file:/etc/netapp_dfm.dtd"
@@ -384,7 +384,7 @@ class NaServer :
         an NaElement and return the result in another
         NaElement.
         """
-     
+
         server = self.server
         user = self.user
         password = self.password
@@ -410,12 +410,12 @@ class NaServer :
 
                     if (self.need_cba == True or self.need_server_auth == True):
                         if (python_version < 2.6):
-                            cba_err = "certificate based authentication is not supported with Python " + str(python_version) + "." 
-                            return self.fail_response(13001, cba_err) 
-                        connection = CustomHTTPSConnection(server, self.port, key_file=self.key_file, 
-                        cert_file=self.cert_file, ca_file=self.ca_file, 
-                        need_server_auth=self.need_server_auth, 
-                        need_cn_verification=self.need_cn_verification, 
+                            cba_err = "certificate based authentication is not supported with Python " + str(python_version) + "."
+                            return self.fail_response(13001, cba_err)
+                        connection = CustomHTTPSConnection(server, self.port, key_file=self.key_file,
+                        cert_file=self.cert_file, ca_file=self.ca_file,
+                        need_server_auth=self.need_server_auth,
+                        need_cn_verification=self.need_cn_verification,
                         timeout=self.timeout)
                         connection.connect()
                         if (self.need_cn_verification == True):
@@ -488,7 +488,7 @@ class NaServer :
             return (self.fail_response(13001, message[1]))
 
         response = connection.getresponse()
-    
+
         if not response :
             connection.close()
             return self.fail_response(13001,"No response received")
@@ -506,7 +506,7 @@ class NaServer :
                 print(("\nOUTPUT :",xml_response,"\n"))
                 connection.close()
                 return self.fail_response(13001, "debugging bypassed xml parsing")
-        
+
         connection.close()
         return self.parse_xml(xml_response)
 
@@ -576,7 +576,7 @@ class NaServer :
 
     def set_client_cert_and_key(self, cert_file, key_file):
         """ Sets the client certificate and key files that are required for client authentication
-        by the server using certificates. If key file is not defined, then the certificate file 
+        by the server using certificates. If key file is not defined, then the certificate file
         will be used as the key file.
         """
 
@@ -587,7 +587,7 @@ class NaServer :
             self.key_file = cert_file
 
     def set_ca_certs(self, ca_file):
-        """ Specifies the certificates of the Certificate Authorities (CAs) that are 
+        """ Specifies the certificates of the Certificate Authorities (CAs) that are
         trusted by this application and that will be used to verify the server certificate.
         """
 
@@ -595,9 +595,9 @@ class NaServer :
 
     def set_server_cert_verification(self, enable):
         """ Enables or disables server certificate verification by the client.
-        Server certificate verification is enabled by default when style 
-        is set to CERTIFICATE. Hostname (CN) verification is enabled 
-        during server certificate verification. Hostname verification can be 
+        Server certificate verification is enabled by default when style
+        is set to CERTIFICATE. Hostname (CN) verification is enabled
+        during server certificate verification. Hostname verification can be
         disabled using set_hostname_verification() API.
         """
 
@@ -620,7 +620,7 @@ class NaServer :
 
     def set_hostname_verification(self, enable):
         """  Enables or disables hostname verification during server certificate verification.
-        Hostname (CN) verification is enabled by default during server certificate verification. 
+        Hostname (CN) verification is enabled by default during server certificate verification.
         """
 
         if (enable != True and enable != False):
@@ -850,9 +850,9 @@ try:
     class CustomHTTPSConnection(httplib.HTTPSConnection):
         """ Custom class to make a HTTPS connection, with support for Certificate Based Authentication"""
 
-        def __init__(self, host, port, key_file, cert_file, ca_file, 
+        def __init__(self, host, port, key_file, cert_file, ca_file,
                    need_server_auth, need_cn_verification, timeout=None):
-            httplib.HTTPSConnection.__init__(self, host, port=port, key_file=key_file, 
+            httplib.HTTPSConnection.__init__(self, host, port=port, key_file=key_file,
                                      cert_file=cert_file,timeout=timeout)
             self.key_file = key_file
             self.cert_file = cert_file
@@ -877,7 +877,3 @@ try:
             return ""
 except AttributeError:
     pass
-
-
-
-

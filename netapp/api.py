@@ -77,19 +77,6 @@ class Server():
         self.server.set_style("LOGIN")
         self.server.set_admin_user(username, password)
 
-        output = self.server.invoke("system-get-version")
-
-        if(output.results_errno() != 0):
-            r = output.results_reason()
-            print("Failed: \n" + str(r))
-
-        else :
-            r = output.child_get_string("version")
-            print (r + "\n")
-
-
-
-
 
 class Event():
     pass
