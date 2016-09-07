@@ -64,7 +64,7 @@ class Server():
             """
 
             api_call = NaElement("event-iter")
-            api_call.child_add_integer("greater-than-id", int(id))
+            api_call.child_add_string("greater-than-id", str(id))
 
             results = self.server.server.invoke_elem(api_call)
 
