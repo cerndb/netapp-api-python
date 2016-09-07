@@ -78,7 +78,7 @@ class Server():
             :param states: NEW, OBSOLETE etc
             :param greater_than_id: any integer
             :param time_range: tuple of start, end timestamp in local time
-              Unix timestamps
+              Unix timestamps. Timestamps are _inclusive_.
             :param max_records: paginate results with max_records as the
               maximum number of entries.
             """

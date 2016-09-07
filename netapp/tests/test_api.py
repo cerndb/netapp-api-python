@@ -1,7 +1,8 @@
 import os
 
 import netapp.api
-
+from datetime import datetime
+import pytz
 import pytest
 
 server_host = os.environ['NETAPP_HOST']
@@ -44,7 +45,22 @@ def test_list_events_all_filters():
         print(event)
 
 def test_list_events_after_last_event():
-    pass
+
+    s =_connect_server()
+
+    last_event = None
+    for event in s.events:
+        last_event = event
+
+    last_time = last_event.timestamp + 1
+    now = datetime.now().strftime('%s')
+
+    found_events = False
+    for event in s.events.filter(time_range=(last_time, now)):
+        found_events = True
+        print event
+
+    assert not found_events
 
 def test_list_events_after_middle_event():
     pass
