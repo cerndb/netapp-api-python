@@ -256,10 +256,11 @@ class Event():
         self.event_type = raw_event.child_get_string('event-type')
 
         unix_timestamp_localtime = raw_event.child_get_int('event-time')
-        self.timestamp = datetime.fromtimestamp(unix_timestamp_localtime,
-                                                pytz.timezone(LOCAL_TIMEZONE))
+        self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
+                                               pytz.timezone(LOCAL_TIMEZONE))
+        self.timestamp = unix_timestamp_localtime
 
     def __str__(self):
         datestring = "{:%c}"
-        return "[%d] %s: [%s] %s (%s)" % (self.id, datestring.format(self.timestamp),
+        return "[%d] %s: [%s] %s (%s)" % (self.id, datestring.format(self.datetime),
                                           self.severity, self.state, self.name)
