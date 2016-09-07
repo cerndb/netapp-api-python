@@ -79,12 +79,15 @@ class Server():
             - greater_than_id: any integer
             - time_range: tuple of start, end timestamp in local time
               Unix timestamps
+            - max_records: paginate results with max_records as the
+              maximum number of entries.
             """
 
             severities = kwargs.get('severities', None)
             states = kwargs.get('states', None)
             greater_than_id = kwargs.get('greater_than_id', None)
             time_range = kwargs.get('time_range', None)
+            max_records = kwargs.get('max_records', None)
 
             api_call = NaElement('event-iter')
 
@@ -120,7 +123,10 @@ class Server():
 
                 api_call.child_add(event_severities)
 
-            return self.server._get_events(self.server.invoke_elem(api_call))
+            if max_records is not None:
+                api_call.child_add_string("max-records", max_records)
+
+            return self.server._get_events(api_call)
 
         # Seems to be unsupported in the new API?
         # def filter_long_poll(self, timeout, **kwargs):
@@ -171,27 +177,53 @@ class Server():
         self.server.set_admin_user(username, password)
 
 
-    def _get_events(self, results):
+    def _get_events(self, api_call):
         """
         Internal convenience wrapper function. Will return a generator
-        of events corresponding to the provided results.
+        of events corresponding to the provided query.
 
         Raises an Exception if the call failed. Good luck interpreting
         the error message -- it is most likely useless.
         """
 
-        ## FIXME: this assumes that all events are arriving in one
-        ## batch. Sometimes they do not -- catch this condition and
-        ## iterate over them!
+        results = self.invoke_elem(api_call)
 
         if results.results_status() != 'passed':
             raise Exception("API Error: %s" % results.results_reason())
-        elif results.child_get_string('next-tag') is not None:
-            raise Exception("Multi-batch fetching not implemented!")
         else:
             raw_events = results.child_get('records').children_get()
 
-            return (Event(ev) for ev in raw_events)
+            for ev in raw_events:
+                yield Event(ev)
+
+            # is there another page?
+            if results.child_get_string('next-tag') is not None:
+                next_api_call = NaElement('event-iter')
+
+                next_tag = results.child_get_string('next-tag')
+
+                # According to the specification, we need to preserve
+                # all options, but we also need to replace any previous
+                # occurrences of 'tag'. However, there is no method for
+                # replacing/overwriting children!
+                #
+                # The work-around is to simply copy everything but the
+                # tag-related data to a new query and recur on it.
+                for child in api_call.children_get():
+
+                    # Probably an unsupported operation:
+                    child_name = child.element['name']
+
+                    if child_name not in ['tag', 'next-tag']:
+                        next_api_call.child_add(child)
+
+
+                # Finally, add a tag to inform the API of where we were:
+                next_api_call.child_add_string('tag', next_tag)
+
+                # recur on next page
+                for event in self._get_events(next_api_call):
+                    yield event
 
     def invoke_elem(self, elem):
         """
@@ -204,8 +236,6 @@ class Event():
     """
     A nicer representation of a logging event. Should only be
     instantiated by the API functions (don't roll your own!).
-
-
     """
 
     def __init__(self, raw_event):
