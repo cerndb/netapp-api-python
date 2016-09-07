@@ -1,11 +1,13 @@
 import sys
 import os
+from datetime import datetime
 
 # FIXME: this is really, really, really ugly
 parent_directory, _ = os.path.split(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.join(parent_directory, "./lib/NetApp/"))
 
 from NaServer import NaServer, NaElement
+import pytz
 
 # HACK WARNING
 # This is an override for allowing self-signed server certificates:
@@ -17,6 +19,7 @@ ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
 
 DEFAULT_APP_NAME = "cern-monitoring-experiment"
+LOCAL_TIMEZONE = "Europe/Zurich"
 
 class Server():
     """
@@ -133,6 +136,35 @@ class Server():
             return raw_events
 
 class Event():
+    """
+    A nicer representation of a logging event. Should only be
+    instantiated by the API functions (don't roll your own!).
+
+
+    """
 
     def __init__(self, raw_event):
-        self.raw_event = raw_event
+
+        ## FIXME: extract event-arguments as well, if relevant
+        self.about = raw_event.child_get_string('event-about')
+        self.category = raw_event.child_get_string('event-category')
+        self.condition = raw_event.child_get_string('event-condition')
+        self.id = raw_event.child_get_int('event-id')
+        self.impact_area = raw_event.child_get_string('event-impact-area')
+        self.impact_level = raw_event.child_get_string('event-impact-level')
+        self.name = raw_event.child_get_string('event-name')
+        self.severity = raw_event.child_get_string('event-severity')
+        self.source_name = raw_event.child_get_string('event-source-name')
+        self.source_resource_key = raw_event.child_get_string('event-source-resource-key')
+        self.source_type = raw_event.child_get_string('event-source-type')
+        self.state = raw_event.child_get_string('event-state')
+        self.event_type = raw_event.child_get_string('event-type')
+
+        unix_timestamp_localtime = raw_event.child_get_int('event-time')
+        self.timestamp = datetime.fromtimestamp(unix_timestamp_localtime,
+                                                pytz.timezone(LOCAL_TIMEZONE))
+
+    def __str__(self):
+        datestring = "{:%c}"
+        return "[%d] %s: [%s] %s (%s)" % (self.id, datestring.format(self.timestamp),
+                                          self.severity, self.state, self.name)

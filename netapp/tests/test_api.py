@@ -34,3 +34,24 @@ def test_list_events_after():
         assert event
 
     assert found_anything
+
+
+def test_list_events_after_nonexistent_event():
+    s = _connect_server()
+    for event in s.events.greater_than_id(1):
+        print(event)
+
+def test_list_events_after_last_event():
+    pass
+
+def test_list_events_after_middle_event():
+    pass
+
+def test_event_get_specific():
+    pass
+
+def test_event_get_nonexistent():
+    pass
+
+def test_invalid_credentials():
+    pass
