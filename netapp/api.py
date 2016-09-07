@@ -56,9 +56,7 @@ class Server():
         """
 
         def __iter__(self):
-            raw_events = self.server._get_events()
-
-            return (Event(ev) for ev in raw_events)
+            return self.server._get_events(self.server.invoke('event-iter'))
 
         def greater_than_id(self, id):
             """
@@ -69,15 +67,7 @@ class Server():
             api_call = NaElement("event-iter")
             api_call.child_add_string("greater-than-id", str(id))
 
-            results = self.server.server.invoke_elem(api_call)
-
-            if results.results_status() != 'passed':
-                raise Exception("API Error: %s" % results.results_reason())
-            else:
-                raw_events = results.child_get('records').children_get()
-
-            return (Event(ev) for ev in raw_events)
-
+            return self.server._get_events(self.server.invoke_elem(api_call))
 
         def by_id(self, id):
             """
@@ -86,6 +76,32 @@ class Server():
             """
 
             pass
+
+        def filter(self, **kwargs):
+            """
+            Return only items matching the specified filter queries,
+            passed in as keyword arguments. Available filters/keywords are:
+            - impact_levels
+            - severities
+            - states
+            - types
+            - greater_than_id
+            - time_interval
+            """
+
+            pass
+
+        # Seems to be unsupported in the new API?
+        # def filter_long_poll(self, timeout, **kwargs):
+        #     """
+        #     Like filter(), but long-poll for timeout seconds waiting for
+        #     new data matching the query. time_interval is not allowed
+        #     and will raise a ValueError.
+        #     """
+
+        #     if kwargs.has_key('time_interval'):
+        #         raise ValueError("Having time interval constraints on a long "
+        #                          "poll doesn't make sense!")
 
         def __init__(self, server):
             self.server = server
@@ -117,23 +133,41 @@ class Server():
         self.server.set_admin_user(username, password)
 
 
-    def _get_events(self):
+    def _get_events(self, results):
         """
-        Internal convenience wrapper function. Will return a list of raw
-        child objects describing the entire event log on the server.
+        Internal convenience wrapper function. Will return a generator
+        of events corresponding to the provided results.
 
         Raises an Exception if the call failed. Good luck interpreting
         the error message -- it is most likely useless.
         """
 
-        results = self.server.invoke('event-iter')
+        ## FIXME: this assumes that all events are arriving in one
+        ## batch. Sometimes they do not -- catch this condition and
+        ## iterate over them!
 
         if results.results_status() != 'passed':
             raise Exception("API Error: %s" % results.results_reason())
+        elif results.child_get_string('next-tag') is not None:
+            raise Exception("Multi-batch fetching not implemented!")
         else:
             raw_events = results.child_get('records').children_get()
 
-            return raw_events
+            return (Event(ev) for ev in raw_events)
+
+    def invoke(self, command):
+        """
+        Convenience method: pass on a call to invoke() to the server.
+        """
+
+        return self.server.invoke(command)
+
+    def invoke_elem(self, elem):
+        """
+        Convenience method: pass on a call to invoke() to the server.
+        """
+
+        return self.server.invoke_elem(elem)
 
 class Event():
     """
