@@ -44,7 +44,7 @@ class Server():
         ...
 
     # Get all events after a specific one:
-    for event in s.events.greater_than_id(13):
+    for event in s.events.filter(greater_than_id=13):
         ...
     """
 
@@ -74,12 +74,12 @@ class Server():
             queries, passed in as keyword arguments. Available
             filters/keywords are:
 
-            - severities: information, warning, error, critical
-            - states: NEW, OBSOLETE etc
-            - greater_than_id: any integer
-            - time_range: tuple of start, end timestamp in local time
+            :param severities: information, warning, error, critical
+            :param states: NEW, OBSOLETE etc
+            :param greater_than_id: any integer
+            :param time_range: tuple of start, end timestamp in local time
               Unix timestamps
-            - max_records: paginate results with max_records as the
+            :param max_records: paginate results with max_records as the
               maximum number of entries.
             """
 
@@ -236,6 +236,8 @@ class Event():
     """
     A nicer representation of a logging event. Should only be
     instantiated by the API functions (don't roll your own!).
+
+
     """
 
     def __init__(self, raw_event):
