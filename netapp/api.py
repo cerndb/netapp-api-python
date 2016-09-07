@@ -56,18 +56,9 @@ class Server():
         """
 
         def __iter__(self):
-            return self.server._get_events(self.server.invoke('event-iter'))
 
-        def greater_than_id(self, id):
-            """
-            Return an Iterator over the current event log, but only
-            containing events with ID:s higher than id.
-            """
-
-            api_call = NaElement("event-iter")
-            api_call.child_add_string("greater-than-id", str(id))
-
-            return self.server._get_events(self.server.invoke_elem(api_call))
+            # Applying an empty filter <==> get everything
+            return self.filter()
 
         def by_id(self, id):
             """
@@ -79,17 +70,57 @@ class Server():
 
         def filter(self, **kwargs):
             """
-            Return only items matching the specified filter queries,
-            passed in as keyword arguments. Available filters/keywords are:
-            - impact_levels
-            - severities
-            - states
-            - types
-            - greater_than_id
-            - time_interval
+            Return an Iterator over items matching the specified filter
+            queries, passed in as keyword arguments. Available
+            filters/keywords are:
+
+            - severities: information, warning, error, critical
+            - states: NEW, OBSOLETE etc
+            - greater_than_id: any integer
+            - time_range: tuple of start, end timestamp in local time
+              Unix timestamps
             """
 
-            pass
+            severities = kwargs.get('severities', None)
+            states = kwargs.get('states', None)
+            greater_than_id = kwargs.get('greater_than_id', None)
+            time_range = kwargs.get('time_range', None)
+
+            api_call = NaElement('event-iter')
+
+            if greater_than_id is not None:
+                api_call.child_add_string("greater-than-id", str(greater_than_id))
+
+            if time_range is not None:
+                start_time, end_time = time_range
+                interval = NaElement('event-timestamp-range')
+                interval.child_add_string('start-time', start_time)
+                interval.child_add_string('end-time', end_time)
+
+                wrapper = NaElement('time-range')
+                wrapper.child_add(interval)
+
+                api_call.child_add(wrapper)
+
+            if states is not None:
+                event_state_filter_list = NaElement("event-state-filter-list")
+
+                for state in states:
+                    event_state = NaElement('event-state', state)
+                    event_state_filter_list.child_add(event_state)
+
+                api_call.child_add(event_state_filter_list)
+
+            if severities is not None:
+                event_severities = NaElement("event-severities")
+
+                for severity in severities:
+                    obj_status = NaElement('obj_status', severity)
+                    event_severities.child_add(obj_status)
+
+                api_call.child_add(event_severities)
+
+            return self.server._get_events(self.server.invoke_elem(api_call))
 
         # Seems to be unsupported in the new API?
         # def filter_long_poll(self, timeout, **kwargs):
@@ -114,6 +145,13 @@ class Server():
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME):
+        """
+        Instantiate a new server connection. Proided details are:
+        - hostname: the hostname of the server (or IP number)
+        - transport_type: HTTP or HTTPS
+        - server_type: only OCUM currently supported
+        - app_name: the name of the calling app, as reported to the server
+        """
 
         self.server = NaServer(hostname, ONTAP_MAJORVERSION,
                                ONTAP_MINORVERSION)
@@ -155,16 +193,9 @@ class Server():
 
             return (Event(ev) for ev in raw_events)
 
-    def invoke(self, command):
-        """
-        Convenience method: pass on a call to invoke() to the server.
-        """
-
-        return self.server.invoke(command)
-
     def invoke_elem(self, elem):
         """
-        Convenience method: pass on a call to invoke() to the server.
+        Convenience method: pass on a call to invoke_elem() to the server.
         """
 
         return self.server.invoke_elem(elem)

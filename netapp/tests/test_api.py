@@ -29,16 +29,18 @@ def test_list_events_after():
     s = _connect_server()
 
     found_anything = False
-    for event in s.events.greater_than_id(0):
+    for event in s.events.filter(greater_than_id=0):
         found_anything = True
         assert event
 
     assert found_anything
 
 
-def test_list_events_after_nonexistent_event():
+def test_list_events_all_filters():
     s = _connect_server()
-    for event in s.events.greater_than_id(1):
+    for event in s.events.filter(time_range=(1470045486, 1473252714),
+                                 severities=['warning', 'information'],
+                                 states=['new']):
         print(event)
 
 def test_list_events_after_last_event():
