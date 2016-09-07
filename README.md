@@ -9,3 +9,8 @@
 
 Set the environment variables `NETAPP_HOST`, `NETAPP_USERNAME`, and
 `NETAPP_PASSWORD` and run `pytest`.
+
+## Generating documentation
+
+Documentation via Sphinx is available (more or less). You can generate
+HTML documentation by going to /doc/ and entering `make html`.
