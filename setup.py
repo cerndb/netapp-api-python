@@ -17,5 +17,6 @@ setup(
     description = (""),
     license="Proprietary",
     packages=['netapp'],
+    install_requires=['pytz'],
     long_description=read('README.md'),
 )
