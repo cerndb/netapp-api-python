@@ -1,6 +1,7 @@
 import sys
 import os
 from datetime import datetime
+import StringIO
 
 import vocabulary
 
@@ -287,6 +288,21 @@ class Server():
         # status...
         response = lxml.etree.fromstring(r.content)
 
+        status = response.xpath('/a:netapp/a:results/@status',
+                                namespaces={'a': XMLNS})[0]
+
+        if status != 'passed':
+            reason = response.xpath('/a:netapp/a:results/@reason',
+                                    namespaces={'a': XMLNS})[0]
+
+            errno = response.xpath('/a:netapp/a:results/@errno',
+                                   namespaces={'a': XMLNS})[0]
+
+
+            raise APIError(message=reason, errno=errno,
+                           failing_query=request)
+        else:
+            pass
 
 class Event():
     """
@@ -322,3 +338,18 @@ class Event():
         datestring = "{:%c}"
         return "[%d] %s: [%s] %s (%s)" % (self.id, datestring.format(self.datetime),
                                           self.severity, self.state, self.name)
+
+
+class APIError(Exception):
+    def __init__(self, message="", errno=None, failing_query=None):
+        self.msg = message
+        self.errno = errno
+        self.failing_query = failing_query
+
+
+    def __str__(self):
+        str = "API Error %s: %s. Offending query: \n %s" % (self.errno,
+                                                            self.msg,
+                                                            self.failing_query)
+
+        return str
