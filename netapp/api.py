@@ -91,6 +91,10 @@ class Server():
               Unix timestamps. Timestamps are _inclusive_.
             :param max_records: paginate results with max_records as the
               maximum number of entries. Will make several queries!
+
+            :param timout: Timeout in seconds, after which the query
+             will return an empty results if nothing was found. Defaults
+             to 0 if not provided, or if a time interval was provided.
             """
 
             severities = kwargs.get('severities', None)
@@ -98,6 +102,7 @@ class Server():
             greater_than_id = kwargs.get('greater_than_id', None)
             time_range = kwargs.get('time_range', None)
             max_records = kwargs.get('max_records', None)
+            timeout = kwargs.get('timeout', 0)
 
             api_call = NaElement('event-iter')
 
@@ -136,19 +141,9 @@ class Server():
             if max_records is not None:
                 api_call.child_add_string("max-records", max_records)
 
+            api_call.child_add_string('timeout', timeout)
+
             return self.server._get_events(api_call)
-
-        # Seems to be unsupported in the new API?
-        # def filter_long_poll(self, timeout, **kwargs):
-        #     """
-        #     Like filter(), but long-poll for timeout seconds waiting for
-        #     new data matching the query. time_interval is not allowed
-        #     and will raise a ValueError.
-        #     """
-
-        #     if kwargs.has_key('time_interval'):
-        #         raise ValueError("Having time interval constraints on a long "
-        #                          "poll doesn't make sense!")
 
         def __init__(self, server):
             self.server = server
