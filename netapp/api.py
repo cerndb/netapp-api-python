@@ -298,11 +298,18 @@ class Server():
             errno = response.xpath('/a:netapp/a:results/@errno',
                                    namespaces={'a': XMLNS})[0]
 
-
             raise APIError(message=reason, errno=errno,
                            failing_query=request)
         else:
-            pass
+            num_records = int(response.xpath('/a:netapp/a:results/a:num-records/text()',
+                                         namespaces={'a': XMLNS})[0])
+
+            records = response.xpath('/a:netapp/a:results/a:records/*',
+                                   namespaces={'a': XMLNS})
+
+            assert num_records == len(records)
+
+            return records
 
 class Event():
     """
