@@ -2,23 +2,26 @@ import sys
 import os
 from datetime import datetime
 
+import vocabulary
+
 # FIXME: this is really, really, really ugly
-parent_directory, _ = os.path.split(os.path.dirname(os.path.realpath(__file__)))
-sys.path.append(os.path.join(parent_directory, "./lib/NetApp/"))
+#parent_directory, _ = os.path.split(os.path.dirname(os.path.realpath(__file__)))
+#sys.path.append(os.path.join(parent_directory, "./lib/NetApp/"))
 
-from NaServer import NaServer, NaElement
+#from NaServer import NaServer, NaElement
 import pytz
+import requests
+import lxml.etree
 
-# HACK WARNING
-# This is an override for allowing self-signed server certificates:
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-
+_DEBUG = False
 
 ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
+OCUM_API_URL = '/apis/XMLrequest'
+XMLNS = 'http://www.netapp.com/filer/admin'
+XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 
-DEFAULT_APP_NAME = "cern-monitoring-experiment"
+DEFAULT_APP_NAME = "netapp-ocum-events"
 LOCAL_TIMEZONE = "Europe/Zurich"
 
 class Server():
@@ -186,23 +189,10 @@ class Server():
           server
         """
 
-        self.server = NaServer(hostname, ONTAP_MAJORVERSION,
-                               ONTAP_MINORVERSION)
-
-        self.server.set_server_type(server_type)
-
-        self.server.set_transport_type(transport_type)
-        self.server.set_port(port)
-
-        # FIXME: this is a workaround. DO NOT LEAVE ON!
-        self.server.set_server_cert_verification(False)
-
-        self.server.set_application_name(app_name)
-
-        ## FIXME: support other auth methods!
-        self.server.set_style("LOGIN")
-        self.server.set_admin_user(username, password)
-
+        self.hostname = hostname
+        self.auth_tuple = (username, password)
+        self.api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
+        self.app_name = app_name
 
     def _get_events(self, api_call):
         """
@@ -263,6 +253,40 @@ class Server():
         """
 
         return self.server.invoke_elem(elem)
+
+    def perform_call(self, api_call):
+        """
+        """
+
+        query_root = vocabulary.netapp(api_call,
+                                       xmlns=XMLNS,
+                                       version=XMLNS_VERSION,
+                                       nmsdk_app=self.app_name)
+
+        request = lxml.etree.tostring(query_root, xml_declaration=True,
+                                      encoding="UTF-8")
+
+        if _DEBUG:
+            print("Performing request:")
+            print(request)
+
+        r = requests.post(self.api_url, verify=False, auth=self.auth_tuple,
+                          data=request,
+                          headers={'Content-type': 'application/xml'})
+
+        # FIXME: prettify this handling
+        r.raise_for_status()
+
+        if _DEBUG:
+                print("\nResponse code: %s:\n" % r.status_code)
+                print(lxml.etree.tostring(lxml.etree.fromstring(r.content),
+                                          pretty_print=True,
+                                          encoding="UTF-8"))
+
+        # If we got here, the request was OK. Now for verifying the
+        # status...
+        response = lxml.etree.fromstring(r.content)
+
 
 class Event():
     """
