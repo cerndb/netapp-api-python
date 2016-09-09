@@ -180,7 +180,8 @@ class Server():
     def _get_events(self, api_call):
         """
         Internal convenience wrapper function. Will return a generator
-        of events corresponding to the provided query.
+        of events corresponding to the provided query. May make several
+        queries if the results were paginated.
 
         Raises an Exception if the call failed. Good luck interpreting
         the error message -- it is most likely useless.
