@@ -12,7 +12,6 @@ Contents:
    :maxdepth: 2
 
    netapp.rst
-   modules.rst
 
 Indices and tables
 ==================

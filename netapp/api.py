@@ -29,29 +29,51 @@ class Server():
 
     It implements a subset of the official NetApp API related to events.
 
-    See docstrings for __init__ for mor information on instantiation.
+    See docstrings for `__init__` for more information on instantiation.
 
 
-    Examples:
+    ========
+    Examples
+    ========
 
-    s = Server(...)
+    Start a server::
 
-    # Return a specific event by its ID:
-    event = s.events.by_id(13)
+    	s = Server(hostname="netapp-1234", username="admin",
+                   password="admin123")
 
-    # Return all events:
-    for event in s.events:
-        ...
+    Return a specific event by its ID::
 
-    # Get all events after a specific one:
-    for event in s.events.filter(greater_than_id=13):
-        ...
+	event = s.events.by_id(13)
+
+    Return all events::
+
+    	for event in s.events:
+    		print(event)
+
+    Get all events after a specific one::
+
+    	for event in s.events.filter(greater_than_id=13):
+    		print(event)
+
+
+    Some parameters can be passed as a list::
+
+    	for event in s.events.filter(greater_than_id=13,
+                                     severity=['critical', 'error']):
+    		print(event)
+
+    Events are fetched automatically in lazy increments if pagination is
+    enabled::
+
+	for event in s.events.filter(max_records=4):
+    		print(event)
+    		# Will perform multiple queries under the hood
     """
 
     class EventLog():
         """
         An iterator over all the storage engine's events. Will (by
-        default) iterate over _all_ events, but may optionally filter
+        default) iterate over *all* events, but may optionally filter
         out events by ID.
         """
 
@@ -83,12 +105,12 @@ class Server():
             filters/keywords are:
 
             :param severities: information, warning, error,
-            critical. Raises an Exception if none of these. Options are
-            case-insensetive strings.
+              critical. Raises an Exception if none of these. Options are
+              case-insensetive strings.
             :param states: NEW, OBSOLETE etc
             :param greater_than_id: any integer
             :param time_range: tuple of start, end timestamp in local time
-              Unix timestamps. Timestamps are _inclusive_.
+              Unix timestamps. Timestamps are *inclusive*.
             :param max_records: paginate results with max_records as the
               maximum number of entries. Will make several queries!
 
@@ -157,11 +179,13 @@ class Server():
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME):
         """
-        Instantiate a new server connection. Proided details are:
-        - hostname: the hostname of the server (or IP number)
-        - transport_type: HTTP or HTTPS
-        - server_type: only OCUM currently supported
-        - app_name: the name of the calling app, as reported to the server
+        Instantiate a new server connection. Provided details are:
+
+        :param hostname: the hostname of the server (or IP number)
+        :param transport_type: HTTP or HTTPS (default is HTTPS)
+        :param server_type: only OCUM currently supported
+        :param app_name: the name of the calling app, as reported to the
+          server
         """
 
         self.server = NaServer(hostname, ONTAP_MAJORVERSION,
@@ -236,7 +260,8 @@ class Server():
 
     def invoke_elem(self, elem):
         """
-        Convenience method: pass on a call to invoke_elem() to the server.
+        Internal convenience method: pass on a call to `invoke_elem()`
+        to the server.
         """
 
         return self.server.invoke_elem(elem)
