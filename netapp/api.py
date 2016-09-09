@@ -1,3 +1,42 @@
+"""
+This is a Python implementation of NetApp's OCUM event logging API.
+
+**Examples:**
+
+Connect to a server::
+
+    s = Server(hostname="netapp-1234", username="admin",
+               password="admin123")
+
+Return a specific event by its ID::
+
+    event = s.events.single_by_id(13)
+
+Return all events::
+
+    for event in s.events:
+            print(event)
+
+Get all events after a specific one::
+
+    for event in s.events.filter(greater_than_id=13):
+            print(event)
+
+
+Some parameters can be passed as a list::
+
+    for event in s.events.filter(greater_than_id=13,
+                                 severity=['critical', 'error']):
+            print(event)
+
+Events are fetched automatically in lazy increments if pagination is
+enabled::
+
+    for event in s.events.filter(max_records=4):
+            print(event)
+            # Will perform multiple queries under the hood
+"""
+
 import sys
 import os
 from datetime import datetime
@@ -34,41 +73,6 @@ class Server():
     It implements a subset of the official NetApp API related to events.
 
     See docstrings for `__init__` for more information on instantiation.
-
-    **Examples:**
-
-    Start a server::
-
-    	s = Server(hostname="netapp-1234", username="admin",
-                   password="admin123")
-
-    Return a specific event by its ID::
-
-	event = s.events.single_by_id(13)
-
-    Return all events::
-
-    	for event in s.events:
-    		print(event)
-
-    Get all events after a specific one::
-
-    	for event in s.events.filter(greater_than_id=13):
-    		print(event)
-
-
-    Some parameters can be passed as a list::
-
-    	for event in s.events.filter(greater_than_id=13,
-                                     severity=['critical', 'error']):
-    		print(event)
-
-    Events are fetched automatically in lazy increments if pagination is
-    enabled::
-
-	for event in s.events.filter(max_records=4):
-    		print(event)
-    		# Will perform multiple queries under the hood
     """
 
     class EventLog():
@@ -353,6 +357,15 @@ class Event():
 
 
 class APIError(Exception):
+    """
+    An Exception logging an api-related error and its context. Note that
+    an APIError typically occurs *after* a successful transfer of a
+    command to the API itself.
+
+    Noteworthy properties are errno (error number), msg (error message)
+    and failing_query (the XML query that was processed as the error
+    occurred, if available).
+    """
     def __init__(self, message="", errno=None, failing_query=None):
         self.msg = message
         self.errno = errno

@@ -1,13 +1,6 @@
 netapp package
 ==============
 
-Subpackages
------------
-
-.. toctree::
-
-    netapp.tests
-
 Submodules
 ----------
 
@@ -21,10 +14,9 @@ netapp.api module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: netapp
+netapp.vocabulary module
+------------------------
+.. automodule:: netapp.vocabulary
     :members:
     :undoc-members:
     :special-members: __init__
