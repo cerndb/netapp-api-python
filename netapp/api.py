@@ -31,10 +31,7 @@ class Server():
 
     See docstrings for `__init__` for more information on instantiation.
 
-
-    ========
-    Examples
-    ========
+    **Examples:**
 
     Start a server::
 
