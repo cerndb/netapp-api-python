@@ -105,7 +105,8 @@ class Server():
               critical. Raises an Exception if none of these. Options are
               case-insensetive strings.
             :param states: NEW, OBSOLETE etc
-            :param greater_than_id: any integer
+            :param greater_than_id: only show events with ID:s greater
+              than (e.g. logged after) the given one.
             :param time_range: tuple of start, end timestamp in local time
               Unix timestamps. Timestamps are *inclusive*.
             :param max_records: paginate results with max_records as the
