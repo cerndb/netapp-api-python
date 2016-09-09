@@ -186,18 +186,24 @@ class Server():
         the error message -- it is most likely useless.
         """
 
-        results = self.invoke_elem(api_call)
+        page_left_to_process = True
 
-        if results.results_status() != 'passed':
-            raise Exception("API Error: %s" % results.results_reason())
-        else:
-            raw_events = results.child_get('records').children_get()
+        while page_left_to_process:
 
-            for ev in raw_events:
-                yield Event(ev)
+            results = self.invoke_elem(api_call)
+
+            if results.results_status() != 'passed':
+                raise Exception("API Error: %s" % results.results_reason())
+            else:
+                raw_events = results.child_get('records').children_get()
+
+                for ev in raw_events:
+                    yield Event(ev)
 
             # is there another page?
-            if results.child_get_string('next-tag') is not None:
+            if results.child_get_string('next-tag') is None:
+                break
+            else:
                 next_api_call = NaElement('event-iter')
 
                 next_tag = results.child_get_string('next-tag')
@@ -220,10 +226,7 @@ class Server():
 
                 # Finally, add a tag to inform the API of where we were:
                 next_api_call.child_add_string('tag', next_tag)
-
-                # recur on next page
-                for event in self._get_events(next_api_call):
-                    yield event
+                api_call = next_api_call
 
     def invoke_elem(self, elem):
         """
