@@ -348,7 +348,8 @@ class Event():
         self.name = _child_get_string(raw_event, 'event-name')
         self.severity = _child_get_string(raw_event, 'event-severity')
         self.source_name = _child_get_string(raw_event, 'event-source-name')
-        self.source_resource_key = _child_get_string(raw_event, 'event-source-resource-key')
+        self.source_resource_key = _child_get_string(raw_event,
+                                                     'event-source-resource-key')
         self.source_type = _child_get_string(raw_event, 'event-source-type')
         self.state = _child_get_string(raw_event, 'event-state')
         self.event_type = _child_get_string(raw_event, 'event-type')
