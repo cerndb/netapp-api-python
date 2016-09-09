@@ -40,7 +40,7 @@ class Server():
 
     Return a specific event by its ID::
 
-	event = s.events.by_id(13)
+	event = s.events.single_by_id(13)
 
     Return all events::
 
