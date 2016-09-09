@@ -24,7 +24,10 @@ if __name__ == '__main__':
 
     event_iter = xml.event_iter(
         xml.timeout("4"),
-        xml.greater_than_id("999")
+        xml.greater_than_id("31982")
     )
 
-    s.perform_call(event_iter)
+    results = s.perform_call(event_iter)
+
+    for event in results:
+        print(netapp.api.Event(event))

@@ -63,6 +63,16 @@ XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 DEFAULT_APP_NAME = "netapp-ocum-events"
 LOCAL_TIMEZONE = "Europe/Zurich"
 
+
+def _child_get_string(parent, string_name):
+    """
+    Helper function: search parent for its corresponding string value
+    with a given key.
+    """
+    xpath_query = 'a:%s/text()' % string_name
+    return parent.xpath(xpath_query,
+                        namespaces={'a': XMLNS})[0]
+
 class Server():
     """
     The Server is a stateless, connectionless configuration container
@@ -324,27 +334,26 @@ class Event():
     A nicer representation of a logging event. Should only be
     instantiated by the API functions (don't roll your own!).
 
-
     """
 
     def __init__(self, raw_event):
 
         ## FIXME: extract event-arguments as well, if relevant
-        self.about = raw_event.child_get_string('event-about')
-        self.category = raw_event.child_get_string('event-category')
-        self.condition = raw_event.child_get_string('event-condition')
-        self.id = raw_event.child_get_int('event-id')
-        self.impact_area = raw_event.child_get_string('event-impact-area')
-        self.impact_level = raw_event.child_get_string('event-impact-level')
-        self.name = raw_event.child_get_string('event-name')
-        self.severity = raw_event.child_get_string('event-severity')
-        self.source_name = raw_event.child_get_string('event-source-name')
-        self.source_resource_key = raw_event.child_get_string('event-source-resource-key')
-        self.source_type = raw_event.child_get_string('event-source-type')
-        self.state = raw_event.child_get_string('event-state')
-        self.event_type = raw_event.child_get_string('event-type')
+        self.about = _child_get_string(raw_event, 'event-about')
+        self.category = _child_get_string(raw_event, 'event-category')
+        self.condition = _child_get_string(raw_event, 'event-condition')
+        self.id = int(_child_get_string(raw_event, 'event-id'))
+        self.impact_area = _child_get_string(raw_event, 'event-impact-area')
+        self.impact_level = _child_get_string(raw_event, 'event-impact-level')
+        self.name = _child_get_string(raw_event, 'event-name')
+        self.severity = _child_get_string(raw_event, 'event-severity')
+        self.source_name = _child_get_string(raw_event, 'event-source-name')
+        self.source_resource_key = _child_get_string(raw_event, 'event-source-resource-key')
+        self.source_type = _child_get_string(raw_event, 'event-source-type')
+        self.state = _child_get_string(raw_event, 'event-state')
+        self.event_type = _child_get_string(raw_event, 'event-type')
 
-        unix_timestamp_localtime = raw_event.child_get_int('event-time')
+        unix_timestamp_localtime = int(_child_get_string(raw_event, 'event-time'))
         self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
                                                pytz.timezone(LOCAL_TIMEZONE))
         self.timestamp = unix_timestamp_localtime
