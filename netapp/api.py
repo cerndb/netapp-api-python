@@ -257,6 +257,10 @@ class Server():
 
     def perform_call(self, api_call):
         """
+        Perform an API call as represented by the provided XML data,
+        returning any entries found.
+
+        Raises an APIError on erroneous API calls.
         """
 
         query_root = vocabulary.netapp(api_call,
