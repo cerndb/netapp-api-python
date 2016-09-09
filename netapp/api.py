@@ -301,8 +301,9 @@ class Server():
             raise APIError(message=reason, errno=errno,
                            failing_query=request)
         else:
-            num_records = int(response.xpath('/a:netapp/a:results/a:num-records/text()',
-                                         namespaces={'a': XMLNS})[0])
+            num_records = int(response.xpath(('/a:netapp/a:results/'
+                                              'a:num-records/text()'),
+                                             namespaces={'a': XMLNS})[0])
 
             records = response.xpath('/a:netapp/a:results/a:records/*',
                                    namespaces={'a': XMLNS})
