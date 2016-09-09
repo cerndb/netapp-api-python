@@ -65,11 +65,11 @@ def test_list_events_after_last_event():
 def test_list_events_after_middle_event():
     pass
 
-def test_event_get_specific():
-    pass
+def test_pagination_same_as_without():
+    s = _connect_server()
 
-def test_event_get_nonexistent():
-    pass
+    paginated_events = s.events.filter(max_records=2)
+    unpaginated_events = s.events.filter()
 
-def test_invalid_credentials():
-    pass
+    assert all(map(lambda x, y: x.id == y.id, paginated_events, unpaginated_events))
+    assert len(paginated_events) == len(unpaginated_events)

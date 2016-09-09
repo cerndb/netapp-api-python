@@ -80,7 +80,7 @@ class Server():
             :param time_range: tuple of start, end timestamp in local time
               Unix timestamps. Timestamps are _inclusive_.
             :param max_records: paginate results with max_records as the
-              maximum number of entries.
+              maximum number of entries. Will make several queries!
             """
 
             severities = kwargs.get('severities', None)
