@@ -26,7 +26,6 @@ def test_list_all_events():
     assert found_anything
 
 def test_list_events_after():
-
     s = _connect_server()
 
     found_anything = False
@@ -45,7 +44,6 @@ def test_list_events_all_filters():
         print(event)
 
 def test_list_events_after_last_event():
-
     s =_connect_server()
 
     last_event = None
@@ -55,15 +53,10 @@ def test_list_events_after_last_event():
     last_time = last_event.timestamp + 1
     now = datetime.now().strftime('%s')
 
-    found_events = False
+
     for event in s.events.filter(time_range=(last_time, now)):
-        found_events = True
         print event
-
-    assert not found_events
-
-def test_list_events_after_middle_event():
-    pass
+        assert False
 
 def test_pagination_same_as_without():
     s = _connect_server()
@@ -72,4 +65,24 @@ def test_pagination_same_as_without():
     unpaginated_events = s.events.filter()
 
     assert all(map(lambda x, y: x.id == y.id, paginated_events, unpaginated_events))
-    assert len(paginated_events) == len(unpaginated_events)
+
+def test_no_filter_same_as_all():
+    s = _connect_server()
+
+    plain_events = s.events
+    events_from_filter = s.events.filter()
+    assert all(map(lambda x, y: x.id == y.id, plain_events, events_from_filter))
+
+def test_severity_warning_only_warnings():
+    s = _connect_server()
+
+    for event in s.events.filter(severities=['warning']):
+        assert event.severity == 'warning'
+
+def test_invalid_severity_filter_throws_exception():
+    s = _connect_server()
+
+    with pytest.raises(Exception):
+        for event in s.events.filter(severities=['fnord']):
+            print event
+            assert False

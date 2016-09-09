@@ -74,7 +74,9 @@ class Server():
             queries, passed in as keyword arguments. Available
             filters/keywords are:
 
-            :param severities: information, warning, error, critical
+            :param severities: information, warning, error,
+            critical. Raises an Exception if none of these. Options are
+            case-insensetive strings.
             :param states: NEW, OBSOLETE etc
             :param greater_than_id: any integer
             :param time_range: tuple of start, end timestamp in local time
