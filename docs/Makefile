@@ -91,9 +91,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/netapp-monitoring-api.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/netapp-ocum-events.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/netapp-monitoring-api.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/netapp-ocum-events.qhc"
 
 .PHONY: applehelp
 applehelp:
@@ -110,8 +110,8 @@ devhelp:
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/netapp-monitoring-api"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/netapp-monitoring-api"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/netapp-ocum-events"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/netapp-ocum-events"
 	@echo "# devhelp"
 
 .PHONY: epub

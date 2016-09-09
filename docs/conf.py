@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# netapp-monitoring-api documentation build configuration file, created by
+# netapp-ocum-events documentation build configuration file, created by
 # sphinx-quickstart on Wed Sep  7 16:48:10 2016.
 #
 # This file is execfile()d with the current directory set to its
@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'netapp-monitoring-api'
+project = u'netapp-ocum-events'
 copyright = u'2016, Albin Stjerna'
 author = u'Albin Stjerna'
 
@@ -137,7 +137,7 @@ html_theme = 'alabaster'
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
 #
-# html_title = u'netapp-monitoring-api v0.1'
+# html_title = u'netapp-ocum-events v0.1'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #
@@ -237,7 +237,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'netapp-monitoring-apidoc'
+htmlhelp_basename = 'netapp-ocum-events'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -263,7 +263,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'netapp-monitoring-api.tex', u'netapp-monitoring-api Documentation',
+    (master_doc, 'netapp-ocum-events.tex', u'netapp-ocum-events Documentation',
      u'Albin Stjerna', 'manual'),
 ]
 
@@ -305,7 +305,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'netapp-monitoring-api', u'netapp-monitoring-api Documentation',
+    (master_doc, 'netapp-ocum-events', u'netapp-ocum-events Documentation',
      [author], 1)
 ]
 
@@ -320,8 +320,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'netapp-monitoring-api', u'netapp-monitoring-api Documentation',
-     author, 'netapp-monitoring-api', 'One line description of project.',
+    (master_doc, 'netapp-ocum-events', u'netapp-ocum-events Documentation',
+     author, 'netapp-ocum-events', 'One line description of project.',
      'Miscellaneous'),
 ]
 
