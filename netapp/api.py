@@ -60,13 +60,21 @@ class Server():
             # Applying an empty filter <==> get everything
             return self.filter()
 
-        def by_id(self, id):
+        def single_by_id(self, id):
             """
-            Return a specific single event with a given ID. Raises an
-            error if no such event exists.
+            Return a specific single event with a given ID. Raises a
+            KeyError if no such event exists.
             """
 
-            pass
+            api_call = NaElement('event-iter')
+
+            api_call.child_add_string('event-id', id)
+
+            for event in self.server._get_events(api_call):
+                return event
+            else:
+                raise KeyError("No such ID!")
+
 
         def filter(self, **kwargs):
             """

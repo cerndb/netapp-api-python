@@ -86,3 +86,29 @@ def test_invalid_severity_filter_throws_exception():
         for event in s.events.filter(severities=['fnord']):
             print event
             assert False
+
+def test_get_known_event_id():
+    s = _connect_server()
+
+    known_event = None
+
+    for event in s.events:
+        known_event = event
+        break
+
+    single_event = s.events.single_by_id(known_event.id)
+
+    assert single_event
+    assert single_event.id == known_event.id
+    assert single_event.name == known_event.name
+
+def test_get_nonexistent_event_id():
+    s = _connect_server()
+
+    last_event_id = 0
+
+    for event in s.events:
+        last_event_id = event.id
+
+    with pytest.raises(KeyError):
+        s.events.single_by_id(last_event_id + 1)
