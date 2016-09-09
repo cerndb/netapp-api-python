@@ -1,3 +1,6 @@
+## About
+This is a Python implementation of NetApp's OCUM event logging API.
+
 ## Setup
 
 1. `mkvirtualenv netapp-ocum-events`
