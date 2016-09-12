@@ -231,11 +231,6 @@ class Server():
 
                 next_api_call.append(V.tag(next_tag))
 
-                next_tag_element = next_api_call.find('next-tag')
-
-                if next_tag_element:
-                    api_call.remove(next_tag_element)
-
                 api_call = next_api_call
 
     def perform_call(self, api_call):
