@@ -41,7 +41,7 @@ import sys
 import os
 from datetime import datetime
 
-import vocabulary
+import netapp.vocabulary as V
 
 # FIXME: this is really, really, really ugly
 #parent_directory, _ = os.path.split(os.path.dirname(os.path.realpath(__file__)))
@@ -102,9 +102,7 @@ class Server():
             KeyError if no such event exists.
             """
 
-            api_call = NaElement('event-iter')
-
-            api_call.child_add_string('event-id', id)
+            api_call = V.even_iter(V.event_id(str(id)))
 
             for event in self.server._get_events(api_call):
                 return event
@@ -222,64 +220,48 @@ class Server():
 
         while page_left_to_process:
 
-            results = self.invoke_elem(api_call)
+            next_tag, raw_events = self.perform_call(api_call)
 
-            if results.results_status() != 'passed':
-                raise Exception("API Error: %s" % results.results_reason())
-            else:
-                raw_events = results.child_get('records').children_get()
-
-                for ev in raw_events:
-                    yield Event(ev)
+            for ev in raw_events:
+                yield Event(ev)
 
             # is there another page?
-            if results.child_get_string('next-tag') is None:
+            if next_tag is None:
                 break
             else:
-                next_api_call = NaElement('event-iter')
-
-                next_tag = results.child_get_string('next-tag')
+                next_api_call = api_call
 
                 # According to the specification, we need to preserve
                 # all options, but we also need to replace any previous
-                # occurrences of 'tag'. However, there is no method for
-                # replacing/overwriting children!
-                #
-                # The work-around is to simply copy everything but the
-                # tag-related data to a new query and recur on it.
-                for child in api_call.children_get():
+                # occurrences of 'tag'.
 
-                    # Probably an unsupported operation:
-                    child_name = child.element['name']
+                tag_element = next_api_call.find('tag')
 
-                    if child_name not in ['tag', 'next-tag']:
-                        next_api_call.child_add(child)
+                if tag_element is not None:
+                    next_api_call.remove(tag_element)
 
+                next_api_call.append(V.tag(next_tag))
 
-                # Finally, add a tag to inform the API of where we were:
-                next_api_call.child_add_string('tag', next_tag)
+                next_tag_element = next_api_call.find('next-tag')
+
+                if next_tag_element:
+                    api_call.remove(next_tag_element)
+
                 api_call = next_api_call
-
-    def invoke_elem(self, elem):
-        """
-        Internal convenience method: pass on a call to `invoke_elem()`
-        to the server.
-        """
-
-        return self.server.invoke_elem(elem)
 
     def perform_call(self, api_call):
         """
         Perform an API call as represented by the provided XML data,
-        returning any entries found.
+        returning a tuple of next_tag, records, where next_tag is None
+        if there were no further pages.
 
         Raises an APIError on erroneous API calls.
         """
 
-        query_root = vocabulary.netapp(api_call,
-                                       xmlns=XMLNS,
-                                       version=XMLNS_VERSION,
-                                       nmsdk_app=self.app_name)
+        query_root = V.netapp(api_call,
+                              xmlns=XMLNS,
+                              version=XMLNS_VERSION,
+                              nmsdk_app=self.app_name)
 
         request = lxml.etree.tostring(query_root, xml_declaration=True,
                                       encoding="UTF-8")
@@ -327,7 +309,15 @@ class Server():
 
             assert num_records == len(records)
 
-            return records
+            next_tag = None
+
+            potential_next_tag = response.xpath(('/a:netapp/a:results/'
+                                                 'a:next-tag/text()'),
+                                                namespaces={'a': XMLNS})
+            if potential_next_tag:
+                next_tag = potential_next_tag[0]
+
+            return next_tag, records
 
 class Event():
     """
