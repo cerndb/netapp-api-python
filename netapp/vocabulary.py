@@ -7,6 +7,23 @@ minimum to avoid confusion in the event of API changes.
 
 **Examples**
 
+The following Python code::
+
+	netapp(event_iter(event_id("17"),
+			  timetout("4")),
+		xmlns="http//my-namespace.com/xml",
+		version="1.0"
+		nmsdk_app="test-app")
+
+Will produce this XML::
+
+	<netapp xmlns="http://my-namespace.com/xml" version="1.0"
+		nmsdk_app="test-app">
+		<event-iter>
+			<event-id>17</event-id>
+			<timeout>4</timeout>
+		</event-iter>
+	</netapp>
 
 """
 
