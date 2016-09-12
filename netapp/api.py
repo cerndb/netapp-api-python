@@ -262,10 +262,10 @@ class Server():
         r.raise_for_status()
 
         if _DEBUG:
-                print("\nResponse code: %s:\n" % r.status_code)
-                print(lxml.etree.tostring(lxml.etree.fromstring(r.content),
-                                          pretty_print=True,
-                                          encoding="UTF-8"))
+            print("\nResponse code: %s:\n" % r.status_code)
+            print(lxml.etree.tostring(lxml.etree.fromstring(r.content),
+                                      pretty_print=True,
+                                      encoding="UTF-8"))
 
         # If we got here, the request was OK. Now for verifying the
         # status...
