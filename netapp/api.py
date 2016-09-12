@@ -102,7 +102,7 @@ class Server():
             KeyError if no such event exists.
             """
 
-            api_call = V.even_iter(V.event_id(str(id)))
+            api_call = V.event_iter(V.event_id(str(id)))
 
             for event in self.server._get_events(api_call):
                 return event
@@ -139,44 +139,33 @@ class Server():
             max_records = kwargs.get('max_records', None)
             timeout = kwargs.get('timeout', 0)
 
-            api_call = NaElement('event-iter')
+            api_call = V.event_iter()
 
             if greater_than_id is not None:
-                api_call.child_add_string("greater-than-id", str(greater_than_id))
+                api_call.append(V.greater_than_id(str(greater_than_id)))
 
             if time_range is not None:
                 start_time, end_time = time_range
-                interval = NaElement('event-timestamp-range')
-                interval.child_add_string('start-time', start_time)
-                interval.child_add_string('end-time', end_time)
 
-                wrapper = NaElement('time-range')
-                wrapper.child_add(interval)
-
-                api_call.child_add(wrapper)
+                api_call.append(
+                    V.time_range(
+                        V.event_timestamp_range(
+                            V.end_time(end_time),
+                            V.start_time(start_time))))
 
             if states is not None:
-                event_state_filter_list = NaElement("event-state-filter-list")
-
-                for state in states:
-                    event_state = NaElement('event-state', state)
-                    event_state_filter_list.child_add(event_state)
-
-                api_call.child_add(event_state_filter_list)
+                event_states = map(V.event_state, states)
+                api_call.append(V.event_state_filter_list(*event_states))
 
             if severities is not None:
-                event_severities = NaElement("event-severities")
-
-                for severity in severities:
-                    obj_status = NaElement('obj_status', severity)
-                    event_severities.child_add(obj_status)
-
-                api_call.child_add(event_severities)
+                obj_statuses = map(V.obj_status, severities)
+                api_call.append(V.event_severities(*obj_statuses))
 
             if max_records is not None:
-                api_call.child_add_string("max-records", max_records)
+                api_call.append(V.max_records(str(max_records)))
 
-            api_call.child_add_string('timeout', timeout)
+
+            api_call.append(V.timeout(str(timeout)))
 
             return self.server._get_events(api_call)
 
