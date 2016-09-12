@@ -1,6 +1,6 @@
 pytest==3.0.2
 Sphinx==1.4.6
-pytz
-requests
-lxml
+pytz==2016.6.1
+requests==2.11.1
+lxml==3.6.4
 pytest-cov == 2.2.1
