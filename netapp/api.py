@@ -67,7 +67,7 @@ def _child_get_string(parent, string_name):
                         namespaces={'a': XMLNS})[0]
 
 
-class Server():
+class Server(object):
     """
     The Server is a stateless, connectionless configuration container
     for a netapp monitoring system. There is no need for closing it. All
@@ -78,7 +78,7 @@ class Server():
     See docstrings for `__init__` for more information on instantiation.
     """
 
-    class EventLog():
+    class EventLog(object):
         """
         An iterator over all the storage engine's events. Will (by
         default) iterate over *all* events, but may optionally filter
@@ -295,7 +295,7 @@ class Server():
             return next_tag, records
 
 
-class Event():
+class Event(object):
     """
     A nicer representation of a logging event. Should only be
     instantiated by the API functions (don't roll your own!).
