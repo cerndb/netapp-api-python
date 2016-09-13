@@ -10,11 +10,11 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name = "netapp-ocum-events",
+    name="netapp-ocum-events",
     version="0.0.1",
     author="Albin Stjerna",
     author_email="albin.stjerna@cern.ch",
-    description = (""),
+    description=(""),
     license="Proprietary",
     packages=['netapp'],
     install_requires=['pytz', 'requests', 'lxml'],

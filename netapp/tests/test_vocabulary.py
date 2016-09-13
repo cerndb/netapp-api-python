@@ -2,6 +2,7 @@ import netapp.vocabulary as v
 
 import lxml.etree
 
+
 def test_complex_query():
     api_call = v.event_iter(
         v.event_id(17),
@@ -24,25 +25,24 @@ def test_complex_query():
 
     str_rep = lxml.etree.tostring(root_wrapper, pretty_print=True)
 
-
     print str_rep
 
     re_parsed_rep = lxml.etree.fromstring(str_rep)
 
     tag = re_parsed_rep.xpath("/a:netapp/a:event-iter/a:tag/text()",
-                              namespaces={"a" : "ns-value"})[0]
+                              namespaces={"a": "ns-value"})[0]
 
     assert tag == "bork_bork"
 
     timeout = re_parsed_rep.xpath("/a:netapp/a:event-iter/a:timeout/text()",
-                                  namespaces={"a" : "ns-value"})[0]
+                                  namespaces={"a": "ns-value"})[0]
 
     assert timeout == "16"
 
     severities = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                      "a:event-severities/"
                                       "a:obj-status/text()"),
-                                  namespaces={"a" : "ns-value"})
+                                     namespaces={"a": "ns-value"})
     print severities
 
     assert "CRITICAL" in severities
@@ -52,36 +52,33 @@ def test_complex_query():
     states = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                   "a:event-state-filter-list/"
                                   "a:event-state/text()"),
-                                 namespaces={"a" : "ns-value"})
+                                 namespaces={"a": "ns-value"})
     print states
 
     assert "NEW" in states
     assert "OBSOLETE" in states
 
-
     greater_than_id = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                            "a:greater-than-id/text()"),
-                                          namespaces={"a" : "ns-value"})[0]
+                                          namespaces={"a": "ns-value"})[0]
 
     assert greater_than_id == "17"
 
     max_records = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                        "a:max-records/text()"),
-                                      namespaces={"a" : "ns-value"})[0]
+                                      namespaces={"a": "ns-value"})[0]
 
     assert max_records == "2"
-
 
     time_start = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                       "a:time-range/a:event-timestamp-range/"
                                       "a:start-time/text()"),
-                                     namespaces={"a" : "ns-value"})[0]
+                                     namespaces={"a": "ns-value"})[0]
     assert time_start == "17"
-
 
     time_end = re_parsed_rep.xpath(("/a:netapp/a:event-iter/"
                                     "a:time-range/a:event-timestamp-range/"
                                     "a:end-time/text()"),
-                                     namespaces={"a" : "ns-value"})[0]
+                                   namespaces={"a": "ns-value"})[0]
 
     assert time_end == "29"

@@ -37,17 +37,10 @@ enabled::
             # Will perform multiple queries under the hood
 """
 
-import sys
-import os
 from datetime import datetime
 
 import netapp.vocabulary as V
 
-# FIXME: this is really, really, really ugly
-#parent_directory, _ = os.path.split(os.path.dirname(os.path.realpath(__file__)))
-#sys.path.append(os.path.join(parent_directory, "./lib/NetApp/"))
-
-#from NaServer import NaServer, NaElement
 import pytz
 import requests
 import lxml.etree
@@ -72,6 +65,7 @@ def _child_get_string(parent, string_name):
     xpath_query = 'a:%s/text()' % string_name
     return parent.xpath(xpath_query,
                         namespaces={'a': XMLNS})[0]
+
 
 class Server():
     """
@@ -108,7 +102,6 @@ class Server():
                 return event
             else:
                 raise KeyError("No such ID!")
-
 
         def filter(self, **kwargs):
             """
@@ -164,14 +157,12 @@ class Server():
             if max_records is not None:
                 api_call.append(V.max_records(str(max_records)))
 
-
             api_call.append(V.timeout(str(timeout)))
 
             return self.server._get_events(api_call)
 
         def __init__(self, server):
             self.server = server
-
 
     @property
     def events(self):
@@ -289,7 +280,7 @@ class Server():
                                              namespaces={'a': XMLNS})[0])
 
             records = response.xpath('/a:netapp/a:results/a:records/*',
-                                   namespaces={'a': XMLNS})
+                                     namespaces={'a': XMLNS})
 
             assert num_records == len(records)
 
@@ -303,6 +294,7 @@ class Server():
 
             return next_tag, records
 
+
 class Event():
     """
     A nicer representation of a logging event. Should only be
@@ -312,7 +304,7 @@ class Event():
 
     def __init__(self, raw_event):
 
-        ## FIXME: extract event-arguments as well, if relevant
+        # FIXME: extract event-arguments as well, if relevant
         self.about = _child_get_string(raw_event, 'event-about')
         self.category = _child_get_string(raw_event, 'event-category')
         self.condition = _child_get_string(raw_event, 'event-condition')
@@ -322,20 +314,23 @@ class Event():
         self.name = _child_get_string(raw_event, 'event-name')
         self.severity = _child_get_string(raw_event, 'event-severity')
         self.source_name = _child_get_string(raw_event, 'event-source-name')
-        self.source_resource_key = _child_get_string(raw_event,
-                                                     'event-source-resource-key')
+        self.source_resource_key = _child_get_string(
+            raw_event,
+            'event-source-resource-key')
         self.source_type = _child_get_string(raw_event, 'event-source-type')
         self.state = _child_get_string(raw_event, 'event-state')
         self.event_type = _child_get_string(raw_event, 'event-type')
 
-        unix_timestamp_localtime = int(_child_get_string(raw_event, 'event-time'))
+        unix_timestamp_localtime = int(_child_get_string(raw_event,
+                                                         'event-time'))
         self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
                                                pytz.timezone(LOCAL_TIMEZONE))
         self.timestamp = unix_timestamp_localtime
 
     def __str__(self):
         datestring = "{:%c}"
-        return "[%d] %s: [%s] %s (%s)" % (self.id, datestring.format(self.datetime),
+        return "[%d] %s: [%s] %s (%s)" % (self.id,
+                                          datestring.format(self.datetime),
                                           self.severity, self.state, self.name)
 
 
@@ -353,7 +348,6 @@ class APIError(Exception):
         self.msg = message
         self.errno = errno
         self.failing_query = failing_query
-
 
     def __str__(self):
         str = "API Error %s: %s. Offending query: \n %s" % (self.errno,
