@@ -349,6 +349,13 @@ class Event(object):
                                           datestring.format(self.datetime),
                                           self.severity, self.state, self.name)
 
+    def __eq__(self, other):
+        return(isinstance(other, self.__class__)
+               and self.__dict__ == oter.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class APIError(Exception):
     """
