@@ -2,7 +2,6 @@ import os
 
 import netapp.api
 from datetime import datetime
-import pytz
 import pytest
 
 server_host = os.environ['NETAPP_HOST']
