@@ -119,6 +119,9 @@ class Server(object):
               Unix timestamps. Timestamps are *inclusive*.
             :param max_records: paginate results with max_records as the
               maximum number of entries. Will make several queries!
+            :param source: Lists events against the specified source
+            resource key. If the provided resource key specifies a
+            group, lists events against all members in that group.
 
             :param timout: Timeout in seconds, after which the query
              will return an empty results if nothing was found. Defaults
@@ -131,6 +134,7 @@ class Server(object):
             time_range = kwargs.get('time_range', None)
             max_records = kwargs.get('max_records', None)
             timeout = kwargs.get('timeout', 0)
+            source = kwargs.get('source', None)
 
             api_call = V.event_iter()
 
@@ -156,6 +160,9 @@ class Server(object):
 
             if max_records is not None:
                 api_call.append(V.max_records(str(max_records)))
+
+            if source is not None:
+                api_call.append(V.source(str(source)))
 
             api_call.append(V.timeout(str(timeout)))
 
