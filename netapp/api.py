@@ -192,6 +192,7 @@ class Server(object):
         self.auth_tuple = (username, password)
         self.api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
         self.app_name = app_name
+        self.session = requests.Session()
 
     def _get_events(self, api_call):
         """
@@ -252,9 +253,9 @@ class Server(object):
             print("Performing request:")
             print(request)
 
-        r = requests.post(self.api_url, verify=False, auth=self.auth_tuple,
-                          data=request,
-                          headers={'Content-type': 'application/xml'})
+        r = self.session.post(self.api_url, verify=False, auth=self.auth_tuple,
+                              data=request,
+                              headers={'Content-type': 'application/xml'})
 
         # FIXME: prettify this handling
         r.raise_for_status()
