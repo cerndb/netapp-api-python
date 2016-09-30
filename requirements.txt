@@ -3,4 +3,5 @@ Sphinx==1.4.6
 pytz==2016.6.1
 requests==2.11.1
 lxml==3.6.4
-pytest-cov == 2.2.1
+pytest-cov == 2.3.1
+
