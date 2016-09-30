@@ -38,6 +38,7 @@ enabled::
 """
 
 from datetime import datetime
+import logging
 
 import netapp.vocabulary as V
 
@@ -45,7 +46,7 @@ import pytz
 import requests
 import lxml.etree
 
-_DEBUG = False
+log = logging.getLogger(__name__)
 
 ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
@@ -249,9 +250,8 @@ class Server(object):
         request = lxml.etree.tostring(query_root, xml_declaration=True,
                                       encoding="UTF-8")
 
-        if _DEBUG:
-            print("Performing request:")
-            print(request)
+
+        log.debug("Performing request: %s" % request)
 
         r = self.session.post(self.api_url, verify=False, auth=self.auth_tuple,
                               data=request,
@@ -260,11 +260,10 @@ class Server(object):
         # FIXME: prettify this handling
         r.raise_for_status()
 
-        if _DEBUG:
-            print("\nResponse code: %s:\n" % r.status_code)
-            print(lxml.etree.tostring(lxml.etree.fromstring(r.content),
-                                      pretty_print=True,
-                                      encoding="UTF-8"))
+        log.debug("Response code: %s:\n" % r.status_code)
+        log.debug("XML Response: %s: " % lxml.etree.tostring(lxml.etree.fromstring(r.content),
+                                                             pretty_print=True,
+                                                             encoding="UTF-8"))
 
         # If we got here, the request was OK. Now for verifying the
         # status...
