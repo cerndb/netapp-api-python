@@ -71,8 +71,9 @@ def _child_get_string(parent, string_name):
 class Server(object):
     """
     The Server is a stateless, connectionless configuration container
-    for a netapp monitoring system. There is no need for closing it. All
-    API calls are made on event access etc.
+    for a netapp monitoring system. There is no need for closing it, but
+    if you want to, a close() function is available to terminate the
+    connection. All API calls are made on event access etc.
 
     It implements a subset of the official NetApp API related to events.
 
@@ -194,6 +195,14 @@ class Server(object):
         self.api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
         self.app_name = app_name
         self.session = requests.Session()
+
+    def close(self):
+        """
+        Close any open connection to the server. The Server object
+        becomes unusable after this.
+        """
+
+        self.session.close()
 
     def _get_events(self, api_call):
         """
