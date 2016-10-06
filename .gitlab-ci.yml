@@ -8,7 +8,7 @@ pages:
   script:
     - mkdir -p public/netapp-events
     - cd docs && make html
-    - cp -r _build/html ../public/netapp-events
+    - cp -r _build/html/* ../public/netapp-events
   artifacts:
     paths:
       - public
