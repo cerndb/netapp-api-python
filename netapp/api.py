@@ -318,46 +318,60 @@ class Event(object):
 
     """
 
+    about = None
+    "A string describing the event further."
+    category = None
+    "The category of the event"
+    condition = None
+    "What condition the event is in"
+    id = None
+    "The internal ID of the event as given by the logger"
+    impact_area = None
+    "The event's impact area"
+    impact_level = None
+    "The event's impact level"
+    name = None
+    "The event's canonical name"
+    severity = None
+    "The severity of the event: warning, information, critical, or error"
+    source_name = None
+    "The name of the resource that produced the event"
+    source_resource_key = None
+    "The key of the resource that produced the event"
+    source_type = None
+    "The type of source that produced the event"
+    state = None
+    "The current state of the event: NEW, OBSOLETE etc"
+    event_type = None
+    "The type of the event"
+
+    datetime = None
+    """A timezone-aware datetime object describing the same date as
+    ``timestamp``"""
+    timestamp = None
+    "The UNIX timestamp the event was reported (as reported by the API)"
+
     def __init__(self, raw_event):
 
         # FIXME: extract event-arguments as well, if relevant
         self.about = _child_get_string(raw_event, 'event-about')
-        "A string describing the event further."
         self.category = _child_get_string(raw_event, 'event-category')
-        "The category of the event"
         self.condition = _child_get_string(raw_event, 'event-condition')
-        "What condition the event is in"
         self.id = int(_child_get_string(raw_event, 'event-id'))
-        "The internal ID of the event"
         self.impact_area = _child_get_string(raw_event, 'event-impact-area')
-        "The event's impact area"
         self.impact_level = _child_get_string(raw_event, 'event-impact-level')
-        "The event's impact level"
         self.name = _child_get_string(raw_event, 'event-name')
-        "The event's canonical name"
         self.severity = _child_get_string(raw_event, 'event-severity')
-        "The severity of the event: warning, information, critical, or error"
         self.source_name = _child_get_string(raw_event, 'event-source-name')
-        "The name of the resource that produced the event"
         self.source_resource_key = _child_get_string(
             raw_event,
             'event-source-resource-key')
-        "The key of the resource that produced the event"
         self.source_type = _child_get_string(raw_event, 'event-source-type')
-        "The type of source that produced the event"
         self.state = _child_get_string(raw_event, 'event-state')
-        "The current state of the event: NEW, OBSOLETE etc"
         self.event_type = _child_get_string(raw_event, 'event-type')
-        "The type of the event"
-
-        unix_timestamp_localtime = int(_child_get_string(raw_event,
-                                                         'event-time'))
         self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
                                                pytz.timezone(LOCAL_TIMEZONE))
-        """A timezone-aware datetime object describing the same date as
-        ``timestamp``"""
         self.timestamp = unix_timestamp_localtime
-        "The UNIX timestamp the event was reported (as reported by the API)"
 
     def __str__(self):
         datestring = "{:%c}"
