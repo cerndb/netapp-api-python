@@ -369,6 +369,9 @@ class Event(object):
         self.source_type = _child_get_string(raw_event, 'event-source-type')
         self.state = _child_get_string(raw_event, 'event-state')
         self.event_type = _child_get_string(raw_event, 'event-type')
+
+        unix_timestamp_localtime = int(_child_get_string(raw_event,
+                                                         'event-time'))
         self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
                                                pytz.timezone(LOCAL_TIMEZONE))
         self.timestamp = unix_timestamp_localtime

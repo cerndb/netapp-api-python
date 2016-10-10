@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name="netapp-ocum-events",
-    version="0.3.0",
+    version="0.3.1",
     author="Albin Stjerna",
     author_email="albin.stjerna@cern.ch",
     description=(""),
