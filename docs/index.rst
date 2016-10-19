@@ -6,11 +6,10 @@
 Welcome to netapp-ocum-events's documentation!
 =================================================
 
-Contents:
-
 .. toctree::
    :maxdepth: 2
 
+   ../README.md
    netapp.rst
 
 Indices and tables
