@@ -92,9 +92,6 @@ def _child_get_dict(parent, string_name):
     log.debug("Begin parsing children of %s" % string_name)
 
     for child in children:
-        assert len(list(child)) == 2, \
-            "Key/value should come in pairs, not %s, %s" % (len(child), str(child))
-
         key = _child_get_string(child, 'key')
 
         try:
