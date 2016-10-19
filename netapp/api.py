@@ -96,12 +96,16 @@ def _child_get_dict(parent, string_name):
             "Key/value should come in pairs, not %s, %s" % (len(child), str(child))
 
         key = _child_get_string(child, 'key')
+
         try:
             value = _child_get_string(child, 'value')
         except IndexError:
             # The only *probable* case here is the empty string, but
             # None works just as well.
-            value = list(child)[1].text
+            if len(list(child)) == 1:
+                value = ""
+            else:
+                value = list(child)[1].text
             log.debug("Key %s had no corresponding value!" % key)
 
         log.debug("Saw {property} pair: {key}: {value}"
