@@ -1,6 +1,6 @@
 import os
 from setuptools import setup
-
+import netapp.api
 
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name="netapp-ocum-events",
-    version="0.3.1",
+    version=netapp.api.__version__,
     author="Albin Stjerna",
     author_email="albin.stjerna@cern.ch",
     description=(""),
