@@ -36,7 +36,6 @@ enabled::
             print(event)
             # Will perform multiple queries under the hood
 """
-__version__ = "0.3.1"
 
 from datetime import datetime
 import logging

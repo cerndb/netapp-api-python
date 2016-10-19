@@ -22,7 +22,7 @@ import sys
 import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('..'))
 
-import netapp.api
+import netapp
 
 source_parsers = {'.md': CommonMarkParser}
 
@@ -67,7 +67,7 @@ author = u'Albin Stjerna'
 # built documents.
 #
 # The short X.Y version.
-version = netapp.api.__version__
+version = netapp.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 
