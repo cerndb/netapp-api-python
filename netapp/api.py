@@ -68,6 +68,51 @@ def _child_get_string(parent, string_name):
                         namespaces={'a': XMLNS})[0]
 
 
+def _child_get_dict(parent, string_name):
+    """
+    Helper function: search a parent for its corresponding key/value
+    dictionary with a given key.
+
+    Structure is:
+    <string_name>
+      <key-value-pair>
+          <key>my-key</key>
+          <value></value>
+      </key-value-pair>
+      ...
+      <key-value-pair></key-value-pair>
+    </string_name>
+    """
+    dataset = {}
+
+    xpath_query = 'a:%s/*' % string_name
+    children = parent.xpath(xpath_query,
+                            namespaces={'a': XMLNS})
+
+    log.debug("Begin parsing children of %s" % string_name)
+
+    for child in children:
+        assert len(list(child)) == 2, "Key/value should come in pairs!"
+
+        key = _child_get_string(child, 'key')
+        try:
+            value = _child_get_string(child, 'value')
+        except IndexError:
+            # The only *probable* case here is the empty string, but
+            # None works just as well.
+            value = list(child)[1].text
+            log.debug("Key %s had no corresponding value!" % key)
+
+        log.debug("Saw {property} pair: {key}: {value}"
+                  .format(property=string_name,
+                          key=key,
+                          value=value))
+
+        dataset[key] = value
+
+    return dataset
+
+
 class Server(object):
     """
     The Server is a stateless, connectionless configuration container
@@ -351,6 +396,9 @@ class Event(object):
     timestamp = None
     "The UNIX timestamp the event was reported (as reported by the API)"
 
+    arguments = {}
+    "A dictionary representing key-value arguments. May vary between events."
+
     def __init__(self, raw_event):
 
         # FIXME: extract event-arguments as well, if relevant
@@ -375,6 +423,8 @@ class Event(object):
         self.datetime = datetime.fromtimestamp(unix_timestamp_localtime,
                                                pytz.timezone(LOCAL_TIMEZONE))
         self.timestamp = unix_timestamp_localtime
+
+        self.arguments = _child_get_dict(raw_event, 'event-arguments')
 
     def __str__(self):
         datestring = "{:%c}"
