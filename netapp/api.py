@@ -102,7 +102,7 @@ def _child_get_dict(parent, string_name):
         if len(child) == 1:
             # Reading the documentation, this should never happen.
             # Reading actual logs: this happens.
-            log.info("Key %s had no corresponding value!" % key)
+            log.debug("Key %s had no corresponding value!" % key)
             value = ""
         else:
             value = _child_get_string(child, 'value')
