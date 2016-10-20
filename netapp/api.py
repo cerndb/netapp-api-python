@@ -64,8 +64,13 @@ def _child_get_string(parent, string_name):
     with a given key.
     """
     xpath_query = 'a:%s/text()' % string_name
-    return parent.xpath(xpath_query,
-                        namespaces={'a': XMLNS})[0]
+
+    matches = parent.xpath(xpath_query,
+                           namespaces={'a': XMLNS})
+
+    assert len(matches) < 2, "Should only match at most one string value!"
+
+    return matches[0] if matches else ""
 
 
 def _child_get_dict(parent, string_name):
@@ -94,16 +99,13 @@ def _child_get_dict(parent, string_name):
     for child in children:
         key = _child_get_string(child, 'key')
 
-        try:
+        if len(child) == 1:
+            # Reading the documentation, this should never happen.
+            # Reading actual logs: this happens.
+            log.info("Key %s had no corresponding value!" % key)
+            value = ""
+        else:
             value = _child_get_string(child, 'value')
-        except IndexError:
-            # The only *probable* case here is the empty string, but
-            # None works just as well.
-            if len(list(child)) == 1:
-                value = ""
-            else:
-                value = list(child)[1].text
-            log.debug("Key %s had no corresponding value!" % key)
 
         log.debug("Saw {property} pair: {key}: {value}"
                   .format(property=string_name,
