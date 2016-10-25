@@ -224,6 +224,11 @@ class Server(object):
 
     @property
     def events(self):
+        """
+        A gettable-only property representing all events known to the
+        server. Performs eager HTTP fetch on every read. Corresponds to
+        an empty filter call.
+        """
         return Server.EventLog(self)
 
     def __init__(self, hostname, username, password, port=443,
@@ -319,9 +324,10 @@ class Server(object):
         r.raise_for_status()
 
         log.debug("Response code: %s:\n" % r.status_code)
-        log.debug("XML Response: %s: " % lxml.etree.tostring(lxml.etree.fromstring(r.content),
-                                                             pretty_print=True,
-                                                             encoding="UTF-8"))
+        log.debug("XML Response: %s: " %
+                  lxml.etree.tostring(lxml.etree.fromstring(r.content),
+                                      pretty_print=True,
+                                      encoding="UTF-8"))
 
         # If we got here, the request was OK. Now for verifying the
         # status...
