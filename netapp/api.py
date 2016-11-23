@@ -57,6 +57,9 @@ XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 DEFAULT_APP_NAME = "netapp-ocum-events"
 LOCAL_TIMEZONE = "Europe/Zurich"
 
+"The default connection timeout, in seconds"
+DEFAULT_TIMEOUT = 4
+
 
 def _child_get_string(parent, string_name):
     """
@@ -233,7 +236,8 @@ class Server(object):
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
-                 app_name=DEFAULT_APP_NAME):
+                 app_name=DEFAULT_APP_NAME,
+                 timeout_s=DEFAULT_TIMEOUT):
         """
         Instantiate a new server connection. Provided details are:
 
@@ -242,6 +246,8 @@ class Server(object):
         :param server_type: only OCUM currently supported
         :param app_name: the name of the calling app, as reported to the
           server
+        :param timeout_s: The timeout in seconds for each connection to
+          a NetApp filer. Passed as-is to Requests.
         """
 
         self.hostname = hostname
@@ -249,6 +255,7 @@ class Server(object):
         self.api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
         self.app_name = app_name
         self.session = requests.Session()
+        self.timeout_s = timeout_s
 
     def close(self):
         """
@@ -318,7 +325,8 @@ class Server(object):
 
         r = self.session.post(self.api_url, verify=False, auth=self.auth_tuple,
                               data=request,
-                              headers={'Content-type': 'application/xml'})
+                              headers={'Content-type': 'application/xml'},
+                              timeout=self.timeout)
 
         # FIXME: prettify this handling
         r.raise_for_status()

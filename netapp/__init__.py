@@ -2,4 +2,4 @@ import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
