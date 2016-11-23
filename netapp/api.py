@@ -326,7 +326,7 @@ class Server(object):
         r = self.session.post(self.api_url, verify=False, auth=self.auth_tuple,
                               data=request,
                               headers={'Content-type': 'application/xml'},
-                              timeout=self.timeout)
+                              timeout=self.timeout_s)
 
         # FIXME: prettify this handling
         r.raise_for_status()
