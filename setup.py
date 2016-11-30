@@ -1,21 +1,27 @@
+# Copyright (C) 2016, CERN
+# This software is distributed under the terms of the GNU General Public
+# Licence version 3 (GPL Version 3), copied verbatim in the file "LICENSE".
+# In applying this license, CERN does not waive the privileges and immunities
+# granted to it by virtue of its status as Intergovernmental Organization
+# or submit itself to any jurisdiction.
+
 import os
 from setuptools import setup
 import netapp
 
-# Utility function to read the README file.
-# Used for the long_description.  It's nice, because now 1) we have a top level
-# README file and 2) it's easier to type in the README file than to put a raw
-# string in below ...
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name="netapp-ocum-events",
+    name="netapp-api",
     version=netapp.__version__,
-    author="Albin Stjerna",
-    author_email="albin.stjerna@cern.ch",
-    description=(""),
-    license="Proprietary",
+    author="CERN",
+    author_email='albin.stjerna@cern.ch',
+    maintainer='Albin Stjerna',
+    maintainer_email='albin.stjerna@cern.ch',
+    description=("NetApp OCUM API wrapper"),
+    url='https://github.com/cerndb/netapp-api-python',
+    license="GPLv3",
     packages=['netapp'],
     install_requires=['pytz', 'requests', 'lxml'],
     long_description=read('README.md'),
