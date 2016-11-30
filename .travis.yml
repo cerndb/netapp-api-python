@@ -1,0 +1,12 @@
+language: python
+python:
+  - "2.7"
+
+# script: bash ./deploy.sh
+install: "pip install -r requirements.txt"
+script: pytest netapp/test/test_vocabulary.py
+
+# env:
+#   global:
+#    - ENCRYPTION_LABEL: "<.... encryption label from previous step ....>"
+#    - COMMIT_AUTHOR_EMAIL: "albin.stjerna@cern.ch"
