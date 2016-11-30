@@ -4,7 +4,7 @@ python:
 
 # script: bash ./deploy.sh
 install: "pip install -r requirements.txt"
-script: pytest netapp/test/test_vocabulary.py
+script: pytest netapp/tests/test_vocabulary.py
 
 # env:
 #   global:
