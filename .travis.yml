@@ -4,7 +4,7 @@ python:
 
 # script: bash ./deploy.sh
 before_install:
-  - pip instal coveralls
+  - pip install coveralls
 install: "pip install -r requirements.txt"
 script: pytest netapp/tests/test_vocabulary.py
 after_success:
