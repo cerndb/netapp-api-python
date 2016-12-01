@@ -14,5 +14,5 @@ script:
   - pytest netapp/tests/test_vocabulary.py
 after_success:
   - coveralls
-  - cd doc && make clean && make html
+  - cd docs && make clean && make html
   - bash ./deploy.sh docs/_build/html
