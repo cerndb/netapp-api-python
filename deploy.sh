@@ -7,9 +7,9 @@ SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 
 TARGET=$1
-PAGES_REPO_PATH="deploy_repo"
+PAGES_REPO_DIR="deploy_repo"
 
-rm -rf $PAGES_REPO_PATH
+rm -rf $PAGES_REPO_DIR
 
 pwd
 
