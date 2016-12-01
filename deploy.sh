@@ -5,6 +5,7 @@ SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 DOCDIR="docs"
 DOC_BUILD_DIR="$DOCDIR/_build/html"
+START_DIR=$(pwd)
 
 function doCompile {
     make html
@@ -27,16 +28,16 @@ SHA=`git rev-parse --verify HEAD`
 git clone $REPO $DOC_BUILD_DIR
 cd $DOC_BUILD_DIR
 git checkout $TARGET_BRANCH || git checkout --orphan $TARGET_BRANCH
-cd $DOCDIR
+cd $START_DIR/$DOCDIR
 
 # Clean out existing contents
-rm -rf $DOC_BUILD_DIR/**/* || exit 0
+rm -rf $START_DIR/$DOC_BUILD_DIR/**/* || exit 0
 
 # Run our compile script
 doCompile
 
 # Now let's go have some fun with the cloned repo
-cd $DOC_BUILD_DIR
+cd $START_DIR/$DOC_BUILD_DIR
 git config user.name "Travis CI"
 git config user.email "$COMMIT_AUTHOR_EMAIL"
 
