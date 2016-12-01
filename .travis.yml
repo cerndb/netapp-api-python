@@ -1,17 +1,17 @@
 language: python
 python:
-  - "2.7"
-#  - "3.5"
-
-# script: bash ./deploy.sh
+- '2.7'
 before_install:
-  - pip install coveralls
-install: "pip install -r requirements.txt"
-script: pytest netapp/tests/test_vocabulary.py
+- openssl aes-256-cbc -K $encrypted_10739f0a1b0b_key -iv $encrypted_10739f0a1b0b_iv
+  -in deploy_github_netapp.enc -out deploy_github_netapp -d
+- pip install coveralls
+env:
+  global:
+    - ENCRYPTION_LABEL: "10739f0a1b0b"
+    - COMMIT_AUTHOR_EMAIL: "albin.stjerna@cern.ch"
+install: pip install -r requirements.txt
+script:
+  - pytest netapp/tests/test_vocabulary.py
 after_success:
   - coveralls
-
-# env:
-#   global:
-#    - ENCRYPTION_LABEL: "<.... encryption label from previous step ....>"
-#    - COMMIT_AUTHOR_EMAIL: "albin.stjerna@cern.ch"
+  - bash ./deploy.sh
