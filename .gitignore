@@ -1,7 +1,0 @@
-*.pyc
-.cache
-/docs/_build/
-/build
-/.env
-/.coverage
-/deploy_github_netapp
