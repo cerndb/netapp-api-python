@@ -59,7 +59,7 @@ OCUM_API_URL = '/apis/XMLrequest'
 XMLNS = 'http://www.netapp.com/filer/admin'
 XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 
-DEFAULT_APP_NAME = "netapp-ocum-events"
+DEFAULT_APP_NAME = "netapp-api-python"
 LOCAL_TIMEZONE = "Europe/Zurich"
 
 "The default connection timeout, in seconds"

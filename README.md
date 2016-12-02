@@ -28,6 +28,9 @@ Set the environment variables `NETAPP_HOST`, `NETAPP_USERNAME`, and
 Documentation via Sphinx is available (more or less). You can generate
 HTML documentation by going to /doc/ and entering `make html`.
 
+The generated documentation is
+[available on GitHub pages](https://cerndb.github.io/netapp-api-python/).
+
 ## License
 
 Licence version 3 (GPL Version 3), copied verbatim in the file "LICENSE".

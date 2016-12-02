@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# netapp-ocum-events documentation build configuration file, created by
+# netapp-api-python documentation build configuration file, created by
 # sphinx-quickstart on Wed Sep  7 16:48:10 2016.
 #
 # This file is execfile()d with the current directory set to its
@@ -58,9 +58,9 @@ templates_path = ['_templates']
 master_doc = 'index'
 
 # General information about the project.
-project = u'netapp-ocum-events'
-copyright = u'2016, Albin Stjerna'
-author = u'Albin Stjerna'
+project = u'netapp-api'
+copyright = u'2016, CERN'
+author = u'CERN'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -244,7 +244,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'netapp-ocum-events'
+htmlhelp_basename = 'netapp-api'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -270,8 +270,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'netapp-ocum-events.tex', u'netapp-ocum-events Documentation',
-     u'Albin Stjerna', 'manual'),
+    (master_doc, 'netapp-api.tex', u'netapp-api Documentation',
+     u'CERN', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -312,7 +312,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'netapp-ocum-events', u'netapp-ocum-events Documentation',
+    (master_doc, 'netapp-api', u'netapp-api Documentation',
      [author], 1)
 ]
 
@@ -327,8 +327,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'netapp-ocum-events', u'netapp-ocum-events Documentation',
-     author, 'netapp-ocum-events', 'One line description of project.',
+    (master_doc, 'netapp-api', u'netapp-api Documentation',
+     author, 'netapp-api', 'One line description of project.',
      'Miscellaneous'),
 ]
 
