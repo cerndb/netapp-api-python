@@ -3,7 +3,7 @@
 Summary: NetApp OCUM API wrapper
 Name: python2-netapp-api
 Version: 0.4.2
-Release: 2
+Release: 2%{?dist}
 Source0: %{name}-%{version}.tar.gz
 License: GPLv3
 Group: Development/Libraries
