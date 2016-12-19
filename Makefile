@@ -9,9 +9,10 @@
 # #
 # #*******************************************************************************
 SPECFILE=python2-netapp-api.spec
-REPOURL=git+ssh://git@gitlab.cern.ch:7999
+REPOURL=git+https://github.com
 # DB gitlab group
-REPOPREFIX=/db
+REPOPREFIX=/cerndb
+REPO_NAME=netapp-api-python
 
 # Get all the package infos from the spec file
 PKGVERSION=$(shell awk '/Version:/ { print $$2 }' ${SPECFILE})
@@ -42,12 +43,12 @@ rpm:    all
 	rpmbuild -ba --define '_sourcedir $(PWD)' ${SPECFILE}
 
 scratch:
-	koji build db6 --nowait --scratch  ${REPOURL}${REPOPREFIX}/${PKGNAME}.git#master
-	koji build db7 --nowait --scratch  ${REPOURL}${REPOPREFIX}/${PKGNAME}.git#master
+	koji build db6 --nowait --scratch  ${REPOURL}${REPOPREFIX}/${REPO_NAME}.git#master
+	koji build db7 --nowait --scratch  ${REPOURL}${REPOPREFIX}/${REPO_NAME}.git#master
 
 build:
-	koji build db6 --nowait ${REPOURL}${REPOPREFIX}/${PKGNAME}.git#master
-	koji build db7 --nowait ${REPOURL}${REPOPREFIX}/${PKGNAME}.git#master
+	koji build db6 --nowait ${REPOURL}${REPOPREFIX}/${REPO_NAME}.git#master
+	koji build db7 --nowait ${REPOURL}${REPOPREFIX}/${REPO_NAME}.git#master
 
 tag-qa:
 	koji tag-build db6-qa $(PKGID)-$(PKGRELEASE).el6
