@@ -3,7 +3,7 @@
 Summary: NetApp OCUM API wrapper
 Name: python2-netapp-api
 Version: 0.4.2
-Release: 2%{?dist}
+Release: 3%{?dist}
 Source0: %{name}-%{version}.tar.gz
 License: GPLv3
 Group: Development/Libraries
@@ -16,7 +16,10 @@ Vendor: Albin Stjerna <albin.stjerna@cern.ch>
 Url: https://github.com/cerndb/netapp-api-python
 
 %description
-This is a Python implementation of relevant parts of NetApp's ZAPI.
+This is a Python implementation of relevant parts of NetApp's ZAPI. It
+is meant to provide a higher-level API than the generated bindings
+provided by NetApp and packaged as cerndb-sw-python-NetApp, but works
+completely independently of them.
 
 %prep
 %setup -n %{name}-%{version} -n %{name}-%{version}
