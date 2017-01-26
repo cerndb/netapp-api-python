@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e # Exit with nonzero exit code if anything fails
+#set -e # Exit with nonzero exit code if anything fails
 #set -v
 #set -x
 
@@ -65,7 +65,7 @@ fi
 
 # Commit the "changes", i.e. the new version.
 # The delta will show diffs between new and old versions.
-git commit -m "Deploy to GitHub Pages: ${SHA}"
+git commit -a -m "Deploy to GitHub Pages: ${SHA}"
 
 # Now that we're all set up, we can push.
 git push $SSH_REPO $TARGET_BRANCH
