@@ -347,11 +347,11 @@
                             <span class="n">V</span><span class="o">.</span><span class="n">start_time</span><span class="p">(</span><span class="n">start_time</span><span class="p">))))</span>
 
             <span class="k">if</span> <span class="n">states</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">event_states</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">event_state</span><span class="p">,</span> <span class="n">states</span><span class="p">)</span>
+                <span class="n">event_states</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">event_state</span><span class="p">,</span> <span class="n">states</span><span class="p">))</span>
                 <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">event_state_filter_list</span><span class="p">(</span><span class="o">*</span><span class="n">event_states</span><span class="p">))</span>
 
             <span class="k">if</span> <span class="n">severities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">obj_statuses</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">obj_status</span><span class="p">,</span> <span class="n">severities</span><span class="p">)</span>
+                <span class="n">obj_statuses</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">obj_status</span><span class="p">,</span> <span class="n">severities</span><span class="p">))</span>
                 <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">event_severities</span><span class="p">(</span><span class="o">*</span><span class="n">obj_statuses</span><span class="p">))</span>
 
             <span class="k">if</span> <span class="n">max_records</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
