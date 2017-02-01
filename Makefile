@@ -8,7 +8,7 @@
 # #
 # #
 # #*******************************************************************************
-SPECFILE=python2-netapp-api.spec
+SPECFILE=python-netapp-api.spec
 REPOURL=git+https://github.com
 # DB gitlab group
 REPOPREFIX=/cerndb
