@@ -34,7 +34,8 @@ sources:
 all:    sources
 
 clean:
-	rm $(TARFILE)
+	find . -name \*.pyc -o -name \*.pyo -o -name __pycache__ -exec rm -rf {} +
+	rm -f $(TARFILE)
 
 srpm:   all
 	rpmbuild -bs --define '_sourcedir $(PWD)' ${SPECFILE}

@@ -210,11 +210,11 @@ class Server(object):
                             V.start_time(start_time))))
 
             if states is not None:
-                event_states = map(V.event_state, states)
+                event_states = list(map(V.event_state, states))
                 api_call.append(V.event_state_filter_list(*event_states))
 
             if severities is not None:
-                obj_statuses = map(V.obj_status, severities)
+                obj_statuses = list(map(V.obj_status, severities))
                 api_call.append(V.event_severities(*obj_statuses))
 
             if max_records is not None:

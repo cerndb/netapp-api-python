@@ -30,7 +30,7 @@ def test_complex_query():
 
     str_rep = lxml.etree.tostring(root_wrapper, pretty_print=True)
 
-    print str_rep
+    print(str_rep)
 
     re_parsed_rep = lxml.etree.fromstring(str_rep)
 
@@ -48,7 +48,7 @@ def test_complex_query():
                                      "a:event-severities/"
                                       "a:obj-status/text()"),
                                      namespaces={"a": "ns-value"})
-    print severities
+    print(severities)
 
     assert "CRITICAL" in severities
     assert "WARNING" in severities
@@ -58,7 +58,7 @@ def test_complex_query():
                                   "a:event-state-filter-list/"
                                   "a:event-state/text()"),
                                  namespaces={"a": "ns-value"})
-    print states
+    print(states)
 
     assert "NEW" in states
     assert "OBSOLETE" in states

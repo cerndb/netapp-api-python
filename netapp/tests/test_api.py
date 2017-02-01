@@ -60,7 +60,7 @@ def test_list_events_after_last_event():
     now = datetime.now().strftime('%s')
 
     for event in s.events.filter(time_range=(last_time, now)):
-        print event
+        print(event)
         assert False
 
 
@@ -95,7 +95,7 @@ def test_invalid_severity_filter_throws_exception():
 
     with pytest.raises(Exception):
         for event in s.events.filter(severities=['fnord']):
-            print event
+            print(event)
             assert False
 
 

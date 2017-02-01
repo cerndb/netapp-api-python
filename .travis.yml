@@ -1,6 +1,7 @@
 language: python
 python:
 - '2.7'
+- '3.6'
 before_install:
 - openssl aes-256-cbc -K $encrypted_10739f0a1b0b_key -iv $encrypted_10739f0a1b0b_iv
   -in deploy_github_netapp.enc -out deploy_github_netapp -d
