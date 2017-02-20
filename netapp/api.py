@@ -2,7 +2,7 @@
 # In applying this license, CERN does not waive the privileges and immunities
 # granted to it by virtue of its status as Intergovernmental Organization
 # or submit itself to any jurisdiction.
-
+from __future__ import print_function
 """
 This is a Python implementation of NetApp's OCUM event logging API.
 
@@ -50,13 +50,16 @@ import netapp.vocabulary as V
 import pytz
 import requests
 import lxml.etree
+import lxml.builder
+
+X = lxml.builder.ElementMaker()
 
 log = logging.getLogger(__name__)
 
 ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
 OCUM_API_URL = '/apis/XMLrequest'
-ONTAPI_API_URL = 'servlets/netapp.servlets.admin.XMLrequest_filer'
+ONTAP_API_URL = '/servlets/netapp.servlets.admin.XMLrequest_filer'
 XMLNS = 'http://www.netapp.com/filer/admin'
 XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 
@@ -66,12 +69,30 @@ LOCAL_TIMEZONE = "Europe/Zurich"
 "The default connection timeout, in seconds"
 DEFAULT_TIMEOUT = 4
 
+"Only consider these data fields for volumes"
+VOL_FIELDS = [X('volume-id-attributes',
+                *[X(x) for x in
+                  ['name', 'uuid', 'junction-path',
+                   'containing-aggregate-name',
+                   'node']]),
+              X('volume-space-attributes',
+                *[X(x) for x in ['size-total', 'size-used']]),
+              X('volume-state-attributes', X('state')),
+              X('volume-export-attributes', X('policy'))]
 
-def _child_get_string(parent, string_name):
+
+def _child_get_string(parent, *string_hierarchy):
     """
     Helper function: search parent for its corresponding string value
     with a given key.
+
+    You can search in a hierarchy by giving multiple tags in the right
+    order, e.g::
+
+        _child_get_string(parent, "volume-id-attributes", "uuid")
     """
+    string_name = "/a:".join(string_hierarchy)
+
     xpath_query = 'a:%s/text()' % string_name
 
     matches = parent.xpath(xpath_query,
@@ -158,7 +179,10 @@ class Server(object):
 
             api_call = V.event_iter(V.event_id(str(id)))
 
-            for event in self.server._get_paginated(api_call, Event):
+            for event in self.server._get_paginated(api_call,
+                                                    endpoint='OCUM',
+                                                    constructor=Event,
+                                                    container_tag="records"):
                 return event
             else:
                 raise KeyError("No such ID!")
@@ -226,10 +250,62 @@ class Server(object):
 
             api_call.append(V.timeout(str(timeout)))
 
-            return self.server._get_paginated(api_call, Event)
+            return self.server._get_paginated(api_call, endpoint='OCUM',
+                                              constructor=Event,
+                                              container_tag="records")
 
         def __init__(self, server):
             self.server = server
+
+    class VolumeList(object):
+
+        def __init__(self, server):
+            self.server = server
+
+        def __iter__(self):
+            # Applying an empty filter <==> get everything
+            return self.filter()
+
+        def filter(self, max_records=None, **query):
+            """
+            Usage:
+               filter(name='my-volume')
+
+            An empty filter matches every volume.
+
+            It is only possible to match on volume-id-attributes, most
+            notably 'uuid', 'junction_path' and 'name'. Underscores will
+            be converted to hyphens.
+
+            max_records is (analogous to the same option for
+            events.filter) the maximum number of entries to return in
+            each fetch operation. Pagination and incremental fetch will
+            be done automatically under the hood.
+            """
+
+            api_call = X('volume-get-iter',
+                         X('desired-attributes',
+                           X('volume-attributes',
+                               *VOL_FIELDS)))
+
+            if max_records is not None:
+                api_call.append(V.max_records(str(max_records)))
+
+            if query:
+                attributes = []
+                for attribute, value in query.iteritems():
+                    attributes.append(X(attribute.replace('_', '-'), value))
+
+                api_call.append(X('query',
+                                  X('volume-attributes',
+                                    X('volume-id-attributes',
+                                      *attributes))))
+
+            return self.server._get_paginated(
+                api_call,
+                endpoint='ONTAP',
+                constructor=Volume,
+                container_tag="attributes-list")
 
     @property
     def events(self):
@@ -239,6 +315,10 @@ class Server(object):
         an empty filter call.
         """
         return Server.EventLog(self)
+
+    @property
+    def volumes(self):
+        return Server.VolumeList(self)
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
@@ -258,7 +338,9 @@ class Server(object):
 
         self.hostname = hostname
         self.auth_tuple = (username, password)
-        self.api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
+        self.ocum_api_url = "https://%s:%d%s" % (hostname, port, OCUM_API_URL)
+        self.ontap_api_url = "https://%s:%d%s" % (hostname,
+                                                  port, ONTAP_API_URL)
         self.app_name = app_name
         self.session = requests.Session()
         self.timeout_s = timeout_s
@@ -271,7 +353,8 @@ class Server(object):
 
         self.session.close()
 
-    def _get_paginated(self, api_call, constructor):
+    def _get_paginated(self, api_call, endpoint, constructor,
+                       container_tag="records"):
         """
         Internal convenience wrapper function. Will return a generator
         of objects corresponding to the provided query, as constructed
@@ -284,9 +367,17 @@ class Server(object):
 
         page_left_to_process = True
 
+        if endpoint == 'OCUM':
+            api_url = self.ocum_api_url
+        elif endpoint == 'ONTAP':
+            api_url = self.ontap_api_url
+        else:
+            raise ValueError(endpoint)
+
         while page_left_to_process:
 
-            next_tag, raw_events = self.perform_call(api_call)
+            next_tag, raw_events = self.perform_call(api_call, api_url,
+                                                     container_tag)
 
             for ev in raw_events:
                 yield constructor(ev)
@@ -310,11 +401,19 @@ class Server(object):
 
                 api_call = next_api_call
 
-    def perform_call(self, api_call):
+    def perform_call(self, api_call, api_url, container_tag):
         """
         Perform an API call as represented by the provided XML data,
         returning a tuple of next_tag, records, where next_tag is None
         if there were no further pages.
+
+        It is assumed that the response will be a list of entries in
+        container_tag::
+
+        <container_tag>
+            <data-entry></data-entry>
+            <data-entry></data-entry>
+        </container_tag>
 
         Raises an APIError on erroneous API calls.
         """
@@ -329,7 +428,7 @@ class Server(object):
 
         log.debug("Performing request: %s" % request)
 
-        r = self.session.post(self.api_url, verify=False, auth=self.auth_tuple,
+        r = self.session.post(api_url, verify=False, auth=self.auth_tuple,
                               data=request,
                               headers={'Content-type': 'application/xml'},
                               timeout=self.timeout_s)
@@ -364,7 +463,8 @@ class Server(object):
                                               'a:num-records/text()'),
                                              namespaces={'a': XMLNS})[0])
 
-            records = response.xpath('/a:netapp/a:results/a:records/*',
+            records = response.xpath('/a:netapp/a:results/a:{}/*'
+                                     .format(container_tag),
                                      namespaces={'a': XMLNS})
 
             assert num_records == len(records)
@@ -455,6 +555,50 @@ class Event(object):
         return "[%d] %s: [%s] %s (%s)" % (self.id,
                                           datestring.format(self.datetime),
                                           self.severity, self.state, self.name)
+
+    def __eq__(self, other):
+        return(isinstance(other, self.__class__)
+               and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+class Volume(object):
+    def __init__(self, raw_object):
+        self.uuid = _child_get_string(raw_object,
+                                      'volume-id-attributes',
+                                      'uuid')
+        self.name = _child_get_string(raw_object,
+                                      'volume-id-attributes',
+                                      'name')
+        self.active_policy_name = _child_get_string(raw_object,
+                                                    'volume-export-attributes',
+                                                    'policy')
+        self.size_total_bytes = int(_child_get_string(
+            raw_object,
+            'volume-space-attributes',
+            'size-total'))
+        self.size_used_bytes = int(_child_get_string(
+            raw_object,
+            'volume-space-attributes',
+            'size-used'))
+        self.state = _child_get_string(raw_object,
+                                       'volume-state-attributes',
+                                       'state')
+        self.junction_path = _child_get_string(raw_object,
+                                               'volume-id-attributes',
+                                               'junction-path')
+        self.containing_aggregate_name = _child_get_string(
+            raw_object,
+            'volume-id-attributes',
+            'containing-aggregate-name')
+        self.node_name = _child_get_string(raw_object,
+                                           'volume-id-attributes',
+                                           'node')
+
+    def __str__(self):
+        return "<Volume name={}>".format(self.name)
 
     def __eq__(self, other):
         return(isinstance(other, self.__class__)
