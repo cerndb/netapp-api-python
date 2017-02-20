@@ -56,6 +56,7 @@ log = logging.getLogger(__name__)
 ONTAP_MAJORVERSION = 1
 ONTAP_MINORVERSION = 0
 OCUM_API_URL = '/apis/XMLrequest'
+ONTAPI_API_URL = 'servlets/netapp.servlets.admin.XMLrequest_filer'
 XMLNS = 'http://www.netapp.com/filer/admin'
 XMLNS_VERSION = "%d.%d" % (ONTAP_MAJORVERSION, ONTAP_MINORVERSION)
 
@@ -157,7 +158,7 @@ class Server(object):
 
             api_call = V.event_iter(V.event_id(str(id)))
 
-            for event in self.server._get_events(api_call):
+            for event in self.server._get_paginated(api_call, Event):
                 return event
             else:
                 raise KeyError("No such ID!")
@@ -225,7 +226,7 @@ class Server(object):
 
             api_call.append(V.timeout(str(timeout)))
 
-            return self.server._get_events(api_call)
+            return self.server._get_paginated(api_call, Event)
 
         def __init__(self, server):
             self.server = server
@@ -270,13 +271,14 @@ class Server(object):
 
         self.session.close()
 
-    def _get_events(self, api_call):
+    def _get_paginated(self, api_call, constructor):
         """
         Internal convenience wrapper function. Will return a generator
-        of events corresponding to the provided query. May make several
-        queries if the results were paginated.
+        of objects corresponding to the provided query, as constructed
+        by the given constructor. May make several queries if the
+        results were paginated.
 
-        Raises an Exception if the call failed. Good luck interpreting
+        Raises an APIError if the call failed. Good luck interpreting
         the error message -- it is most likely useless.
         """
 
@@ -287,7 +289,7 @@ class Server(object):
             next_tag, raw_events = self.perform_call(api_call)
 
             for ev in raw_events:
-                yield Event(ev)
+                yield constructor(ev)
 
             # is there another page?
             if next_tag is None:
@@ -324,7 +326,6 @@ class Server(object):
 
         request = lxml.etree.tostring(query_root, xml_declaration=True,
                                       encoding="UTF-8")
-
 
         log.debug("Performing request: %s" % request)
 
