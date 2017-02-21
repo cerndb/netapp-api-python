@@ -143,15 +143,22 @@
 <a class="reference external" href="https://coveralls.io/github/cerndb/netapp-api-python?branch=master"><img alt="Coverage Status" src="https://coveralls.io/repos/github/cerndb/netapp-api-python/badge.svg?branch=master" /></a></p>
 <div class="section" id="about">
 <span id="about"></span><h1>About<a class="headerlink" href="#about" title="Permalink to this headline">¶</a></h1>
-<p>This is a Python implementation of relevant parts of NetApp&#8217;s ZAPI.</p>
+<p>This is a human-made Python implementation of relevant parts of NetApp&#8217;s
+ZAPI.</p>
 <div class="section" id="supported-systems">
 <span id="supported-systems"></span><h2>Supported Systems<a class="headerlink" href="#supported-systems" title="Permalink to this headline">¶</a></h2>
-<p>Currently, only DFM 6.3 is supported.</p>
+<p>Currently, only DFM 6.3/6.4 and ONTAP is supported.</p>
 </div>
 <div class="section" id="implemented-features">
 <span id="implemented-features"></span><h2>Implemented Features<a class="headerlink" href="#implemented-features" title="Permalink to this headline">¶</a></h2>
+<p>DFM:</p>
 <ul class="simple">
 <li>Events (just reading)</li>
+</ul>
+<p>ONTAP:</p>
+<ul class="simple">
+<li>Volumes (reading)</li>
+<li>Snapshots (reading)</li>
 </ul>
 </div>
 </div>
@@ -165,8 +172,9 @@
 </div>
 <div class="section" id="testing">
 <span id="testing"></span><h1>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h1>
-<p>Set the environment variables <code class="docutils literal"><span class="pre">NETAPP_HOST</span></code>, <code class="docutils literal"><span class="pre">NETAPP_USERNAME</span></code>, and
-<code class="docutils literal"><span class="pre">NETAPP_PASSWORD</span></code> and run <code class="docutils literal"><span class="pre">pytest</span></code>.</p>
+<p>Set the environment variables to a host running NetApp OCUM
+<code class="docutils literal"><span class="pre">NETAPP_HOST</span></code>, <code class="docutils literal"><span class="pre">NETAPP_USERNAME</span></code>, and <code class="docutils literal"><span class="pre">NETAPP_PASSWORD</span></code> and run
+<code class="docutils literal"><span class="pre">pytest</span></code>. To test ONTAP set <code class="docutils literal"><span class="pre">ONTAP_HOST</span></code>, etc.</p>
 </div>
 <div class="section" id="generating-documentation">
 <span id="generating-documentation"></span><h1>Generating documentation<a class="headerlink" href="#generating-documentation" title="Permalink to this headline">¶</a></h1>

@@ -149,8 +149,10 @@
  | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
+ | <a href="#V"><strong>V</strong></a>
  
 </div>
 <h2 id="_">_</h2>
@@ -171,6 +173,18 @@
 
         
   <dt><a href="netapp.html#netapp.api.Server.EventLog.__init__">(netapp.api.Server.EventLog method)</a>
+  </dt>
+
+        
+  <dt><a href="netapp.html#netapp.api.Server.ExportPolicy.__init__">(netapp.api.Server.ExportPolicy method)</a>
+  </dt>
+
+        
+  <dt><a href="netapp.html#netapp.api.Server.VolumeList.__init__">(netapp.api.Server.VolumeList method)</a>
+  </dt>
+
+        
+  <dt><a href="netapp.html#netapp.api.Volume.__init__">(netapp.api.Volume method)</a>
   </dt>
 
       </dl></dd>
@@ -225,6 +239,12 @@
   </dt>
 
   </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="netapp.html#netapp.api.DEFAULT_TIMEOUT">DEFAULT_TIMEOUT (in module netapp.api)</a>
+  </dt>
+
+  </dl></td>
 </tr></table>
 
 <h2 id="E">E</h2>
@@ -250,12 +270,12 @@
   <dt><a href="netapp.html#netapp.vocabulary.event_severities">event_severities() (in module netapp.vocabulary)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="netapp.html#netapp.vocabulary.event_state">event_state() (in module netapp.vocabulary)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="netapp.html#netapp.vocabulary.event_state_filter_list">event_state_filter_list() (in module netapp.vocabulary)</a>
   </dt>
@@ -272,6 +292,14 @@
   <dt><a href="netapp.html#netapp.api.Server.events">events (netapp.api.Server attribute)</a>
   </dt>
 
+      
+  <dt><a href="netapp.html#netapp.api.Server.export_policies">export_policies (netapp.api.Server attribute)</a>
+  </dt>
+
+      
+  <dt><a href="netapp.html#netapp.api.Server.export_rules_of">export_rules_of() (netapp.api.Server method)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
@@ -282,6 +310,12 @@
   <dt><a href="netapp.html#netapp.api.Server.EventLog.filter">filter() (netapp.api.Server.EventLog method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="netapp.html#netapp.api.Server.VolumeList.filter">(netapp.api.Server.VolumeList method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -342,12 +376,18 @@
   <dt><a href="netapp.html#netapp.api.Event.name">name (netapp.api.Event attribute)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="netapp.html#netapp.api.Server.ExportPolicy.name">(netapp.api.Server.ExportPolicy attribute)</a>
+  </dt>
+
+      </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="netapp.html#netapp.vocabulary.netapp">netapp (in module netapp.vocabulary)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="netapp.html#module-netapp.api">netapp.api (module)</a>
   </dt>
@@ -379,6 +419,16 @@
   </dl></td>
 </tr></table>
 
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="netapp.html#netapp.api.Server.ExportPolicy.rules">rules (netapp.api.Server.ExportPolicy attribute)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
@@ -391,6 +441,14 @@
   </dt>
 
       
+  <dt><a href="netapp.html#netapp.api.Server.ExportPolicy">Server.ExportPolicy (class in netapp.api)</a>
+  </dt>
+
+      
+  <dt><a href="netapp.html#netapp.api.Server.VolumeList">Server.VolumeList (class in netapp.api)</a>
+  </dt>
+
+      
   <dt><a href="netapp.html#netapp.api.Event.severity">severity (netapp.api.Event attribute)</a>
   </dt>
 
@@ -398,12 +456,16 @@
   <dt><a href="netapp.html#netapp.api.Server.EventLog.single_by_id">single_by_id() (netapp.api.Server.EventLog method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="netapp.html#netapp.api.Server.snapshots_of">snapshots_of() (netapp.api.Server method)</a>
+  </dt>
+
       
   <dt><a href="netapp.html#netapp.vocabulary.source">source (in module netapp.vocabulary)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="netapp.html#netapp.api.Event.source_name">source_name (netapp.api.Event attribute)</a>
   </dt>
@@ -446,6 +508,22 @@
 
       
   <dt><a href="netapp.html#netapp.api.Event.timestamp">timestamp (netapp.api.Event attribute)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="netapp.html#netapp.api.Volume">Volume (class in netapp.api)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="netapp.html#netapp.api.Server.volumes">volumes (netapp.api.Server attribute)</a>
   </dt>
 
   </dl></td>

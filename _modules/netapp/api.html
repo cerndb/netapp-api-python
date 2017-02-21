@@ -139,7 +139,7 @@
 <span class="c1"># In applying this license, CERN does not waive the privileges and immunities</span>
 <span class="c1"># granted to it by virtue of its status as Intergovernmental Organization</span>
 <span class="c1"># or submit itself to any jurisdiction.</span>
-
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This is a Python implementation of NetApp&#39;s OCUM event logging API.</span>
 
@@ -187,12 +187,17 @@
 <span class="kn">import</span> <span class="nn">pytz</span>
 <span class="kn">import</span> <span class="nn">requests</span>
 <span class="kn">import</span> <span class="nn">lxml.etree</span>
+<span class="kn">import</span> <span class="nn">lxml.builder</span>
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">ElementMaker</span><span class="p">()</span>
 
 <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">ONTAP_MAJORVERSION</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">ONTAP_MINORVERSION</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">OCUM_API_URL</span> <span class="o">=</span> <span class="s1">&#39;/apis/XMLrequest&#39;</span>
+<span class="n">ONTAP_API_URL</span> <span class="o">=</span> <span class="s1">&#39;/servlets/netapp.servlets.admin.XMLrequest_filer&#39;</span>
 <span class="n">XMLNS</span> <span class="o">=</span> <span class="s1">&#39;http://www.netapp.com/filer/admin&#39;</span>
 <span class="n">XMLNS_VERSION</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">.</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ONTAP_MAJORVERSION</span><span class="p">,</span> <span class="n">ONTAP_MINORVERSION</span><span class="p">)</span>
 
@@ -202,12 +207,30 @@
 <span class="s2">&quot;The default connection timeout, in seconds&quot;</span>
 <span class="n">DEFAULT_TIMEOUT</span> <span class="o">=</span> <span class="mi">4</span>
 
+<span class="s2">&quot;Only consider these data fields for volumes&quot;</span>
+<span class="n">VOL_FIELDS</span> <span class="o">=</span> <span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>
+                  <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="s1">&#39;junction-path&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;containing-aggregate-name&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;node&#39;</span><span class="p">]]),</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;size-total&#39;</span><span class="p">,</span> <span class="s1">&#39;size-used&#39;</span><span class="p">]]),</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;state&#39;</span><span class="p">)),</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">))]</span>
 
-<span class="k">def</span> <span class="nf">_child_get_string</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">string_name</span><span class="p">):</span>
+
+<span class="k">def</span> <span class="nf">_child_get_string</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">string_hierarchy</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helper function: search parent for its corresponding string value</span>
 <span class="sd">    with a given key.</span>
+
+<span class="sd">    You can search in a hierarchy by giving multiple tags in the right</span>
+<span class="sd">    order, e.g::</span>
+
+<span class="sd">        _child_get_string(parent, &quot;volume-id-attributes&quot;, &quot;uuid&quot;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">string_name</span> <span class="o">=</span> <span class="s2">&quot;/a:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">string_hierarchy</span><span class="p">)</span>
+
     <span class="n">xpath_query</span> <span class="o">=</span> <span class="s1">&#39;a:</span><span class="si">%s</span><span class="s1">/text()&#39;</span> <span class="o">%</span> <span class="n">string_name</span>
 
     <span class="n">matches</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath_query</span><span class="p">,</span>
@@ -218,7 +241,7 @@
     <span class="k">return</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">matches</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
 
 
-<span class="k">def</span> <span class="nf">_child_get_dict</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">string_name</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_child_get_kv_dict</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">string_name</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Helper function: search a parent for its corresponding key/value</span>
 <span class="sd">    dictionary with a given key.</span>
@@ -227,11 +250,13 @@
 <span class="sd">    &lt;string_name&gt;</span>
 <span class="sd">      &lt;key-value-pair&gt;</span>
 <span class="sd">          &lt;key&gt;my-key&lt;/key&gt;</span>
-<span class="sd">          &lt;value&gt;&lt;/value&gt;</span>
+<span class="sd">          &lt;value&gt;17&lt;/value&gt;</span>
 <span class="sd">      &lt;/key-value-pair&gt;</span>
 <span class="sd">      ...</span>
 <span class="sd">      &lt;key-value-pair&gt;&lt;/key-value-pair&gt;</span>
 <span class="sd">    &lt;/string_name&gt;</span>
+
+<span class="sd">    which will return: {&#39;key&#39;: 17}</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">dataset</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -294,7 +319,10 @@
 
             <span class="n">api_call</span> <span class="o">=</span> <span class="n">V</span><span class="o">.</span><span class="n">event_iter</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">event_id</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">id</span><span class="p">)))</span>
 
-            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_events</span><span class="p">(</span><span class="n">api_call</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span>
+                                                    <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;OCUM&#39;</span><span class="p">,</span>
+                                                    <span class="n">constructor</span><span class="o">=</span><span class="n">Event</span><span class="p">,</span>
+                                                    <span class="n">container_tag</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">event</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;No such ID!&quot;</span><span class="p">)</span></div>
@@ -362,10 +390,79 @@
 
             <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">timeout</span><span class="p">)))</span>
 
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_events</span><span class="p">(</span><span class="n">api_call</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;OCUM&#39;</span><span class="p">,</span>
+                                              <span class="n">constructor</span><span class="o">=</span><span class="n">Event</span><span class="p">,</span>
+                                              <span class="n">container_tag</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Server.EventLog.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.EventLog.__init__">[docs]</a>        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">server</span></div></div>
+
+<div class="viewcode-block" id="Server.VolumeList"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList">[docs]</a>    <span class="k">class</span> <span class="nc">VolumeList</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Server.VolumeList.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList.__init__">[docs]</a>        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">server</span></div>
+
+        <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c1"># Applying an empty filter &lt;==&gt; get everything</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Server.VolumeList.filter"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList.filter">[docs]</a>        <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_records</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Usage:</span>
+<span class="sd">               filter(name=&#39;my-volume&#39;)</span>
+
+<span class="sd">            An empty filter matches every volume.</span>
+
+<span class="sd">            It is only possible to match on volume-id-attributes, most</span>
+<span class="sd">            notably &#39;uuid&#39;, &#39;junction_path&#39; and &#39;name&#39;. Underscores will</span>
+<span class="sd">            be converted to hyphens.</span>
+
+<span class="sd">            max_records is (analogous to the same option for</span>
+<span class="sd">            events.filter) the maximum number of entries to return in</span>
+<span class="sd">            each fetch operation. Pagination and incremental fetch will</span>
+<span class="sd">            be done automatically under the hood.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+
+            <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-get-iter&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                               <span class="o">*</span><span class="n">VOL_FIELDS</span><span class="p">)))</span>
+
+            <span class="k">if</span> <span class="n">max_records</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">V</span><span class="o">.</span><span class="n">max_records</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">max_records</span><span class="p">)))</span>
+
+            <span class="k">if</span> <span class="n">query</span><span class="p">:</span>
+                <span class="n">attributes</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">six</span><span class="o">.</span><span class="n">iteritems</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+                    <span class="n">attributes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">),</span> <span class="n">value</span><span class="p">))</span>
+
+                <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                                  <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                                    <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                      <span class="o">*</span><span class="n">attributes</span><span class="p">))))</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span>
+                <span class="n">api_call</span><span class="p">,</span>
+                <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                <span class="n">constructor</span><span class="o">=</span><span class="n">Volume</span><span class="p">,</span>
+                <span class="n">container_tag</span><span class="o">=</span><span class="s2">&quot;attributes-list&quot;</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="Server.ExportPolicy"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.ExportPolicy">[docs]</a>    <span class="k">class</span> <span class="nc">ExportPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A wrapper object for an export policy with the sole purpose of</span>
+<span class="sd">        providing lazy access to rules.</span>
+
+<span class="sd">        Very internal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Server.ExportPolicy.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.ExportPolicy.__init__">[docs]</a>        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">server</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">server</span></div>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">rules</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">export_rules_of</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -375,6 +472,85 @@
 <span class="sd">        an empty filter call.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">Server</span><span class="o">.</span><span class="n">EventLog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">volumes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A gettable-only porperty representing all the volumes on the filer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Server</span><span class="o">.</span><span class="n">VolumeList</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Server.snapshots_of"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.snapshots_of">[docs]</a>    <span class="k">def</span> <span class="nf">snapshots_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A generator over names of snapshots of the given volume.</span>
+
+<span class="sd">        Might return no elements if there are no snapshots.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-get-iter&#39;</span><span class="p">,</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-info&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))),</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-info&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">volume_name</span><span class="p">)))))</span>
+
+        <span class="k">def</span> <span class="nf">unpack_name</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span>
+                                   <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                                   <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_name</span><span class="p">,</span>
+                                   <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">export_policies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read-only-property: return a list of registered export policy names.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-policy-get-iter&#39;</span><span class="p">,</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-rule-info&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy-name&#39;</span><span class="p">))))</span>
+
+        <span class="k">def</span> <span class="nf">unpack_policy</span><span class="p">(</span><span class="n">export_rule_info</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">export_rule_info</span><span class="p">,</span> <span class="s1">&#39;policy-name&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Server</span><span class="o">.</span><span class="n">ExportPolicy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">server</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span>
+                                   <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                                   <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_policy</span><span class="p">,</span>
+                                   <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Server.export_rules_of"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.export_rules_of">[docs]</a>    <span class="k">def</span> <span class="nf">export_rules_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the rules of the policy as a list. Note that order</span>
+<span class="sd">        matters here!</span>
+
+<span class="sd">        Access to the property is lazy, but the list of rules is</span>
+<span class="sd">        materialised immediately.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-rule-get-iter&#39;</span><span class="p">,</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-rule-info&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;rule-index&#39;</span><span class="p">),</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;client-match&#39;</span><span class="p">))),</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-rule-info&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy-name&#39;</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">))))</span>
+
+        <span class="k">def</span> <span class="nf">unpack_rule</span><span class="p">(</span><span class="n">export_rule_info</span><span class="p">):</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">export_rule_info</span><span class="p">,</span> <span class="s1">&#39;rule-index&#39;</span><span class="p">)</span>
+            <span class="n">rule</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">export_rule_info</span><span class="p">,</span> <span class="s1">&#39;client-match&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">index</span><span class="p">,</span> <span class="n">rule</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span>
+            <span class="n">api_call</span><span class="p">,</span>
+            <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+            <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_rule</span><span class="p">,</span>
+            <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">rule</span> <span class="k">for</span> <span class="n">_index</span><span class="p">,</span> <span class="n">rule</span> <span class="ow">in</span>
+                <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span></div>
 
 <div class="viewcode-block" id="Server.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">443</span><span class="p">,</span>
                  <span class="n">transport_type</span><span class="o">=</span><span class="s2">&quot;HTTPS&quot;</span><span class="p">,</span> <span class="n">server_type</span><span class="o">=</span><span class="s2">&quot;OCUM&quot;</span><span class="p">,</span>
@@ -394,7 +570,9 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">hostname</span> <span class="o">=</span> <span class="n">hostname</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auth_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">api_url</span> <span class="o">=</span> <span class="s2">&quot;https://</span><span class="si">%s</span><span class="s2">:</span><span class="si">%d%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">hostname</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">OCUM_API_URL</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ocum_api_url</span> <span class="o">=</span> <span class="s2">&quot;https://</span><span class="si">%s</span><span class="s2">:</span><span class="si">%d%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">hostname</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">OCUM_API_URL</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span> <span class="o">=</span> <span class="s2">&quot;https://</span><span class="si">%s</span><span class="s2">:</span><span class="si">%d%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">hostname</span><span class="p">,</span>
+                                                  <span class="n">port</span><span class="p">,</span> <span class="n">ONTAP_API_URL</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">app_name</span> <span class="o">=</span> <span class="n">app_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">timeout_s</span> <span class="o">=</span> <span class="n">timeout_s</span></div>
@@ -407,24 +585,34 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_call</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_get_paginated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_call</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">,</span> <span class="n">constructor</span><span class="p">,</span>
+                       <span class="n">container_tag</span><span class="o">=</span><span class="s2">&quot;records&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Internal convenience wrapper function. Will return a generator</span>
-<span class="sd">        of events corresponding to the provided query. May make several</span>
-<span class="sd">        queries if the results were paginated.</span>
+<span class="sd">        of objects corresponding to the provided query, as constructed</span>
+<span class="sd">        by the given constructor. May make several queries if the</span>
+<span class="sd">        results were paginated.</span>
 
-<span class="sd">        Raises an Exception if the call failed. Good luck interpreting</span>
+<span class="sd">        Raises an APIError if the call failed. Good luck interpreting</span>
 <span class="sd">        the error message -- it is most likely useless.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">page_left_to_process</span> <span class="o">=</span> <span class="kc">True</span>
 
+        <span class="k">if</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s1">&#39;OCUM&#39;</span><span class="p">:</span>
+            <span class="n">api_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ocum_api_url</span>
+        <span class="k">elif</span> <span class="n">endpoint</span> <span class="o">==</span> <span class="s1">&#39;ONTAP&#39;</span><span class="p">:</span>
+            <span class="n">api_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span>
+
         <span class="k">while</span> <span class="n">page_left_to_process</span><span class="p">:</span>
 
-            <span class="n">next_tag</span><span class="p">,</span> <span class="n">raw_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">)</span>
+            <span class="n">next_tag</span><span class="p">,</span> <span class="n">raw_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="n">api_url</span><span class="p">,</span>
+                                                     <span class="n">container_tag</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">raw_events</span><span class="p">:</span>
-                <span class="k">yield</span> <span class="n">Event</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">constructor</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
 
             <span class="c1"># is there another page?</span>
             <span class="k">if</span> <span class="n">next_tag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -445,11 +633,19 @@
 
                 <span class="n">api_call</span> <span class="o">=</span> <span class="n">next_api_call</span>
 
-<div class="viewcode-block" id="Server.perform_call"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.perform_call">[docs]</a>    <span class="k">def</span> <span class="nf">perform_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_call</span><span class="p">):</span>
+<div class="viewcode-block" id="Server.perform_call"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.perform_call">[docs]</a>    <span class="k">def</span> <span class="nf">perform_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_call</span><span class="p">,</span> <span class="n">api_url</span><span class="p">,</span> <span class="n">container_tag</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Perform an API call as represented by the provided XML data,</span>
 <span class="sd">        returning a tuple of next_tag, records, where next_tag is None</span>
 <span class="sd">        if there were no further pages.</span>
+
+<span class="sd">        It is assumed that the response will be a list of entries in</span>
+<span class="sd">        container_tag::</span>
+
+<span class="sd">        &lt;container_tag&gt;</span>
+<span class="sd">            &lt;data-entry&gt;&lt;/data-entry&gt;</span>
+<span class="sd">            &lt;data-entry&gt;&lt;/data-entry&gt;</span>
+<span class="sd">        &lt;/container_tag&gt;</span>
 
 <span class="sd">        Raises an APIError on erroneous API calls.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -462,10 +658,9 @@
         <span class="n">request</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">query_root</span><span class="p">,</span> <span class="n">xml_declaration</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                       <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span>
 
-
         <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Performing request: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">request</span><span class="p">)</span>
 
-        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_url</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth_tuple</span><span class="p">,</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">api_url</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth_tuple</span><span class="p">,</span>
                               <span class="n">data</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
                               <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Content-type&#39;</span><span class="p">:</span> <span class="s1">&#39;application/xml&#39;</span><span class="p">},</span>
                               <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout_s</span><span class="p">)</span>
@@ -500,7 +695,8 @@
                                               <span class="s1">&#39;a:num-records/text()&#39;</span><span class="p">),</span>
                                              <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})[</span><span class="mi">0</span><span class="p">])</span>
 
-            <span class="n">records</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;/a:netapp/a:results/a:records/*&#39;</span><span class="p">,</span>
+            <span class="n">records</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;/a:netapp/a:results/a:</span><span class="si">{}</span><span class="s1">/*&#39;</span>
+                                     <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">container_tag</span><span class="p">),</span>
                                      <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})</span>
 
             <span class="k">assert</span> <span class="n">num_records</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
@@ -584,13 +780,57 @@
                                                <span class="n">pytz</span><span class="o">.</span><span class="n">timezone</span><span class="p">(</span><span class="n">LOCAL_TIMEZONE</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">unix_timestamp_localtime</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="n">_child_get_dict</span><span class="p">(</span><span class="n">raw_event</span><span class="p">,</span> <span class="s1">&#39;event-arguments&#39;</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span> <span class="o">=</span> <span class="n">_child_get_kv_dict</span><span class="p">(</span><span class="n">raw_event</span><span class="p">,</span> <span class="s1">&#39;event-arguments&#39;</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">datestring</span> <span class="o">=</span> <span class="s2">&quot;{:</span><span class="si">%c</span><span class="s2">}&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;[</span><span class="si">%d</span><span class="s2">] </span><span class="si">%s</span><span class="s2">: [</span><span class="si">%s</span><span class="s2">] </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
                                           <span class="n">datestring</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datetime</span><span class="p">),</span>
                                           <span class="bp">self</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>
+               <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume">[docs]</a><span class="k">class</span> <span class="nc">Volume</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="Volume.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_object</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                      <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                      <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                      <span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_policy_name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                                    <span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span>
+                                                    <span class="s1">&#39;policy&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size_total_bytes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;size-total&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size_used_bytes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;size-used&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                       <span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span>
+                                       <span class="s1">&#39;state&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">junction_path</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                               <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                               <span class="s1">&#39;junction-path&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">containing_aggregate_name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;containing-aggregate-name&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                           <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                           <span class="s1">&#39;node&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;Volume name=</span><span class="si">{}</span><span class="s2">&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">return</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">)</span>

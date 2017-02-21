@@ -146,44 +146,10 @@
 </div>
 <div class="section" id="module-netapp.api">
 <span id="netapp-api-module"></span><h2>netapp.api module<a class="headerlink" href="#module-netapp.api" title="Permalink to this headline">¶</a></h2>
-<p>This is a Python implementation of NetApp&#8217;s OCUM event logging API.</p>
-<p><strong>Examples:</strong></p>
-<p>Connect to a server:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="n">Server</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;netapp-1234&quot;</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-           <span class="n">password</span><span class="o">=</span><span class="s2">&quot;admin123&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Return a specific event by its ID:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">event</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">single_by_id</span><span class="p">(</span><span class="mi">13</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Return all events:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Get all events after a specific one:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">greater_than_id</span><span class="o">=</span><span class="mi">13</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Some parameters can be passed as a list:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">greater_than_id</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span>
-                             <span class="n">severity</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;critical&#39;</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">]):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>Events are fetched automatically in lazy increments if pagination is
-enabled:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">max_records</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
-        <span class="c1"># Will perform multiple queries under the hood</span>
-</pre></div>
-</div>
 <dl class="exception">
 <dt id="netapp.api.APIError">
 <em class="property">exception </em><code class="descclassname">netapp.api.</code><code class="descname">APIError</code><span class="sig-paren">(</span><em>message=''</em>, <em>errno=None</em>, <em>failing_query=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#APIError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.APIError" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">Exception</span></code></p>
 <p>An Exception logging an api-related error and its context. Note that
 an APIError typically occurs <em>after</em> a successful transfer of a
 command to the API itself.</p>
@@ -195,6 +161,12 @@ occurred, if available).</p>
 <code class="descname">__init__</code><span class="sig-paren">(</span><em>message=''</em>, <em>errno=None</em>, <em>failing_query=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#APIError.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.APIError.__init__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+</dd></dl>
+
+<dl class="data">
+<dt id="netapp.api.DEFAULT_TIMEOUT">
+<code class="descclassname">netapp.api.</code><code class="descname">DEFAULT_TIMEOUT</code><em class="property"> = 4</em><a class="headerlink" href="#netapp.api.DEFAULT_TIMEOUT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Only consider these data fields for volumes</p>
 </dd></dl>
 
 <dl class="class">
@@ -378,6 +350,58 @@ KeyError if no such event exists.</p>
 
 </dd></dl>
 
+<dl class="class">
+<dt id="netapp.api.Server.ExportPolicy">
+<em class="property">class </em><code class="descclassname">Server.</code><code class="descname">ExportPolicy</code><span class="sig-paren">(</span><em>name</em>, <em>server</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.ExportPolicy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.ExportPolicy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>A wrapper object for an export policy with the sole purpose of
+providing lazy access to rules.</p>
+<p>Very internal.</p>
+<dl class="method">
+<dt id="netapp.api.Server.ExportPolicy.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>name</em>, <em>server</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.ExportPolicy.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.ExportPolicy.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="netapp.api.Server.ExportPolicy.name">
+<code class="descname">name</code><em class="property"> = None</em><a class="headerlink" href="#netapp.api.Server.ExportPolicy.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="netapp.api.Server.ExportPolicy.rules">
+<code class="descname">rules</code><a class="headerlink" href="#netapp.api.Server.ExportPolicy.rules" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="netapp.api.Server.VolumeList">
+<em class="property">class </em><code class="descclassname">Server.</code><code class="descname">VolumeList</code><span class="sig-paren">(</span><em>server</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.VolumeList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.VolumeList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="netapp.api.Server.VolumeList.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>server</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.VolumeList.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.VolumeList.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.VolumeList.filter">
+<code class="descname">filter</code><span class="sig-paren">(</span><em>max_records=None</em>, <em>**query</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.VolumeList.filter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.VolumeList.filter" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Usage:</dt>
+<dd>filter(name=&#8217;my-volume&#8217;)</dd>
+</dl>
+<p>An empty filter matches every volume.</p>
+<p>It is only possible to match on volume-id-attributes, most
+notably &#8216;uuid&#8217;, &#8216;junction_path&#8217; and &#8216;name&#8217;. Underscores will
+be converted to hyphens.</p>
+<p>max_records is (analogous to the same option for
+events.filter) the maximum number of entries to return in
+each fetch operation. Pagination and incremental fetch will
+be done automatically under the hood.</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="method">
 <dt id="netapp.api.Server.__init__">
 <code class="descclassname">Server.</code><code class="descname">__init__</code><span class="sig-paren">(</span><em>hostname</em>, <em>username</em>, <em>password</em>, <em>port=443</em>, <em>transport_type='HTTPS'</em>, <em>server_type='OCUM'</em>, <em>app_name='netapp-api-python'</em>, <em>timeout_s=4</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.__init__" title="Permalink to this definition">¶</a></dt>
@@ -416,14 +440,62 @@ server. Performs eager HTTP fetch on every read. Corresponds to
 an empty filter call.</p>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="netapp.api.Server.export_policies">
+<code class="descclassname">Server.</code><code class="descname">export_policies</code><a class="headerlink" href="#netapp.api.Server.export_policies" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read-only-property: return a list of registered export policy names.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.export_rules_of">
+<code class="descclassname">Server.</code><code class="descname">export_rules_of</code><span class="sig-paren">(</span><em>policy_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.export_rules_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.export_rules_of" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the rules of the policy as a list. Note that order
+matters here!</p>
+<p>Access to the property is lazy, but the list of rules is
+materialised immediately.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="netapp.api.Server.perform_call">
-<code class="descclassname">Server.</code><code class="descname">perform_call</code><span class="sig-paren">(</span><em>api_call</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.perform_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.perform_call" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">Server.</code><code class="descname">perform_call</code><span class="sig-paren">(</span><em>api_call</em>, <em>api_url</em>, <em>container_tag</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.perform_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.perform_call" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform an API call as represented by the provided XML data,
 returning a tuple of next_tag, records, where next_tag is None
 if there were no further pages.</p>
+<p>It is assumed that the response will be a list of entries in
+container_tag:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">container_tag</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<blockquote>
+<div>&lt;data-entry&gt;&lt;/data-entry&gt;
+&lt;data-entry&gt;&lt;/data-entry&gt;</div></blockquote>
+<p>&lt;/container_tag&gt;</p>
 <p>Raises an APIError on erroneous API calls.</p>
 </dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.snapshots_of">
+<code class="descclassname">Server.</code><code class="descname">snapshots_of</code><span class="sig-paren">(</span><em>volume_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.snapshots_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.snapshots_of" title="Permalink to this definition">¶</a></dt>
+<dd><p>A generator over names of snapshots of the given volume.</p>
+<p>Might return no elements if there are no snapshots.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="netapp.api.Server.volumes">
+<code class="descclassname">Server.</code><code class="descname">volumes</code><a class="headerlink" href="#netapp.api.Server.volumes" title="Permalink to this definition">¶</a></dt>
+<dd><p>A gettable-only porperty representing all the volumes on the filer.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="netapp.api.Volume">
+<em class="property">class </em><code class="descclassname">netapp.api.</code><code class="descname">Volume</code><span class="sig-paren">(</span><em>raw_object</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="netapp.api.Volume.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>raw_object</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -519,7 +591,7 @@ minimum to avoid confusion in the event of API changes.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.netapp">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'netapp')</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
 <dd><p>The root element for any query.</p>
 </dd></dl>
 
@@ -537,7 +609,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.source">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'source')</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resource or group.</p>
 </dd></dl>
 
@@ -549,7 +621,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.tag">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'tag')</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
 <dd><p>The tag from the last call, if processing paginated data.</p>
 </dd></dl>
 
@@ -570,7 +642,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.timeout">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'timeout')</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>The timeout for an operation: <code class="docutils literal"><span class="pre">&lt;timeout&gt;x&lt;/timeout&gt;</span></code>.</p>
 </dd></dl>
 

@@ -2,14 +2,21 @@
 [![Coverage Status](https://coveralls.io/repos/github/cerndb/netapp-api-python/badge.svg?branch=master)](https://coveralls.io/github/cerndb/netapp-api-python?branch=master)
 
 ## About
-This is a Python implementation of relevant parts of NetApp's ZAPI.
+This is a human-made Python implementation of relevant parts of NetApp's
+ZAPI.
 
 ### Supported Systems
 
-Currently, only DFM 6.3 is supported.
+Currently, only DFM 6.3/6.4 and ONTAP is supported.
 
 ### Implemented Features
+
+DFM:
 - Events (just reading)
+
+ONTAP:
+- Volumes (reading)
+- Snapshots (reading)
 
 ## Setup
 
@@ -20,8 +27,9 @@ Currently, only DFM 6.3 is supported.
 
 ## Testing
 
-Set the environment variables `NETAPP_HOST`, `NETAPP_USERNAME`, and
-`NETAPP_PASSWORD` and run `pytest`.
+Set the environment variables to a host running NetApp OCUM
+`NETAPP_HOST`, `NETAPP_USERNAME`, and `NETAPP_PASSWORD` and run
+`pytest`. To test ONTAP set `ONTAP_HOST`, etc.
 
 ## Generating documentation
 
