@@ -25,7 +25,7 @@ setup(
     url='https://github.com/cerndb/netapp-api-python',
     license="GPLv3",
     packages=['netapp'],
-    install_requires=['pytz', 'requests', 'lxml'],
+    install_requires=['pytz', 'requests', 'lxml', 'six'],
     long_description=read('README.md'),
     classifiers=[
         # How mature is this project? Common values are

@@ -51,6 +51,7 @@ import pytz
 import requests
 import lxml.etree
 import lxml.builder
+import six
 
 X = lxml.builder.ElementMaker()
 
@@ -295,7 +296,7 @@ class Server(object):
 
             if query:
                 attributes = []
-                for attribute, value in query.iteritems():
+                for attribute, value in six.iteritems(query):
                     attributes.append(X(attribute.replace('_', '-'), value))
 
                 api_call.append(X('query',
