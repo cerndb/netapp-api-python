@@ -310,6 +310,23 @@ class Server(object):
                 constructor=Volume,
                 container_tag="attributes-list")
 
+    class ExportPolicy(object):
+        """
+        A wrapper object for an export policy with the sole purpose of
+        providing lazy access to rules.
+
+        Very internal.
+        """
+        name = None
+
+        def __init__(self, name, server):
+            self.name = name
+            self.server = server
+
+        @property
+        def rules(self):
+            return self.server.export_rules_of(self.name)
+
     @property
     def events(self):
         """
@@ -347,6 +364,56 @@ class Server(object):
                                    endpoint='ONTAP',
                                    constructor=unpack_name,
                                    container_tag='attributes-list')
+
+    @property
+    def export_policies(self):
+        """
+        Read-only-property: return a list of registered export policy names.
+        """
+        api_call = X('export-policy-get-iter',
+                     X('desired-attributes',
+                       X('export-rule-info',
+                         X('policy-name'))))
+
+        def unpack_policy(export_rule_info):
+            name = _child_get_string(export_rule_info, 'policy-name')
+            return Server.ExportPolicy(name=name, server=self)
+
+        return self._get_paginated(api_call,
+                                   endpoint='ONTAP',
+                                   constructor=unpack_policy,
+                                   container_tag='attributes-list')
+
+    def export_rules_of(self, policy_name):
+        """
+        Return the rules of the policy as a list. Note that order
+        matters here!
+
+        Access to the property is lazy, but the list of rules is
+        materialised immediately.
+        """
+        api_call = X('export-rule-get-iter',
+                     X('desired-attributes',
+                       X('export-rule-info',
+                         X('rule-index'),
+                         X('client-match'))),
+                     X('query',
+                       X('export-rule-info',
+                         X('policy-name', policy_name))))
+
+        def unpack_rule(export_rule_info):
+            index = _child_get_string(export_rule_info, 'rule-index')
+            rule = _child_get_string(export_rule_info, 'client-match')
+            return index, rule
+
+        results = self._get_paginated(
+            api_call,
+            endpoint='ONTAP',
+            constructor=unpack_rule,
+            container_tag='attributes-list')
+
+        return [rule for _index, rule in
+                sorted(results, key=lambda x: x[0])]
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",

@@ -193,3 +193,15 @@ def test_get_snapshots(ontap_server):
         snapshots += list(ontap_server.snapshots_of(vol.name))
 
     assert snapshots
+
+
+@requires_ontap
+def test_get_export_policies(ontap_server):
+    assert 'default' in [x.name for x in ontap_server.export_policies]
+
+
+@requires_ontap
+def test_get_export_rules(ontap_server):
+    for policy in ontap_server.export_policies:
+        # Rules can be empty, but we need to force them to be realised
+        assert policy.rules or policy.rules == []
