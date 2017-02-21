@@ -123,8 +123,7 @@ def test_severity_warning_only_warnings(ocum_server):
 def test_invalid_severity_filter_throws_exception(ocum_server):
     with pytest.raises(Exception):
         for event in ocum_server.events.filter(severities=['fnord']):
-            print(event)
-            assert False
+            pass
 
 
 @requires_ocum
