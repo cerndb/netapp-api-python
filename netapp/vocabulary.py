@@ -60,7 +60,7 @@ def _value_element(tag_name, tag_value):
     return elm
 
 
-def _with_children(tag_name, children):
+def _with_children(tag_name, children=[]):
     """
     Helper function: create a tag and append a set of ready-made child tags.
     """
