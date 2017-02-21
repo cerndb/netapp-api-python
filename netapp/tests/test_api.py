@@ -184,3 +184,12 @@ def test_filter_uuid(ontap_server):
     filtered_result = list(ontap_server.volumes.filter(uuid=first.uuid))
     assert len(filtered_result) == 1
     assert filtered_result[0].uuid == first.uuid
+
+
+@requires_ontap
+def test_get_snapshots(ontap_server):
+    snapshots = []
+    for vol in ontap_server.volumes:
+        snapshots += list(ontap_server.snapshots_of(vol.name))
+
+    assert snapshots

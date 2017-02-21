@@ -103,7 +103,7 @@ def _child_get_string(parent, *string_hierarchy):
     return matches[0] if matches else ""
 
 
-def _child_get_dict(parent, string_name):
+def _child_get_kv_dict(parent, string_name):
     """
     Helper function: search a parent for its corresponding key/value
     dictionary with a given key.
@@ -112,11 +112,13 @@ def _child_get_dict(parent, string_name):
     <string_name>
       <key-value-pair>
           <key>my-key</key>
-          <value></value>
+          <value>17</value>
       </key-value-pair>
       ...
       <key-value-pair></key-value-pair>
     </string_name>
+
+    which will return: {'key': 17}
     """
     dataset = {}
 
@@ -318,7 +320,32 @@ class Server(object):
 
     @property
     def volumes(self):
+        """
+        A gettable-only porperty representing all the volumes on the filer.
+        """
         return Server.VolumeList(self)
+
+    def snapshots_of(self, volume_name):
+        """
+        A generator over names of snapshots of the given volume.
+
+        Might return no elements if there are no snapshots.
+        """
+        api_call = X('snapshot-get-iter',
+                     X('desired-attributes',
+                       X('snapshot-info',
+                         X('name'))),
+                     X('query',
+                       X('snapshot-info',
+                         X('volume', str(volume_name)))))
+
+        def unpack_name(snapshot_info):
+            return _child_get_string(snapshot_info, 'name')
+
+        return self._get_paginated(api_call,
+                                   endpoint='ONTAP',
+                                   constructor=unpack_name,
+                                   container_tag='attributes-list')
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
@@ -548,7 +575,7 @@ class Event(object):
                                                pytz.timezone(LOCAL_TIMEZONE))
         self.timestamp = unix_timestamp_localtime
 
-        self.arguments = _child_get_dict(raw_event, 'event-arguments')
+        self.arguments = _child_get_kv_dict(raw_event, 'event-arguments')
 
     def __str__(self):
         datestring = "{:%c}"
