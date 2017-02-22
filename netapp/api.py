@@ -44,6 +44,7 @@ enabled::
 
 from datetime import datetime
 import logging
+from collections import namedtuple
 
 import netapp.vocabulary as V
 
@@ -415,6 +416,33 @@ class Server(object):
         return [rule for _index, rule in
                 sorted(results, key=lambda x: x[0])]
 
+    def locks_on(self, volume_name):
+        """
+        Return a list of locks (possibly empty) held on the volume
+        volume_name.
+        """
+
+        api_call = X('lock-get-iter',
+                     X('desired-attributes',
+                       X('lock-info',
+                         X('volume'),
+                         X('lock-state'),
+                         X('client-address'))),
+                     X('query',
+                       X('lock-info',
+                         X('volume', volume_name))))
+
+        def unpack_lock(lock_info):
+            return Lock(
+                volume=_child_get_string(lock_info, 'volume'),
+                state=_child_get_string(lock_info, 'lock-state'),
+                client_address=_child_get_string(lock_info, 'client-address'))
+
+        return self._get_paginated(api_call,
+                                   endpoint='ONTAP',
+                                   constructor=unpack_lock,
+                                   container_tag='attributes-list')
+
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME,
@@ -701,6 +729,9 @@ class Volume(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+
+Lock = namedtuple('Lock', 'volume, state, client_address')
 
 
 class APIError(Exception):

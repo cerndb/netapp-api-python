@@ -204,3 +204,10 @@ def test_get_export_rules(ontap_server):
     for policy in ontap_server.export_policies:
         # Rules can be empty, but we need to force them to be realised
         assert policy.rules or policy.rules == []
+
+
+@requires_ontap
+def test_get_locks(ontap_server):
+    for volume in ontap_server.volumes:
+        locks = list(ontap_server.locks_on(volume.name))
+        assert locks or locks == []
