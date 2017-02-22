@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Source Documentation &mdash; netapp-api 0.5.2 documentation</title>
+  <title>Source Documentation &mdash; netapp-api 0.6.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="netapp-api 0.5.2 documentation" href="index.html"/>
+    <link rel="top" title="netapp-api 0.6.0 documentation" href="index.html"/>
         <link rel="prev" title="About" href="README.html"/> 
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.5.2
+                0.6.0
               </div>
             
           
@@ -286,6 +286,30 @@ instantiated by the API functions (don&#8217;t roll your own!).</p>
 </dd></dl>
 
 <dl class="class">
+<dt id="netapp.api.Lock">
+<em class="property">class </em><code class="descclassname">netapp.api.</code><code class="descname">Lock</code><span class="sig-paren">(</span><em>volume</em>, <em>state</em>, <em>client_address</em><span class="sig-paren">)</span><a class="headerlink" href="#netapp.api.Lock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">tuple</span></code></p>
+<dl class="attribute">
+<dt id="netapp.api.Lock.client_address">
+<code class="descname">client_address</code><a class="headerlink" href="#netapp.api.Lock.client_address" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="netapp.api.Lock.state">
+<code class="descname">state</code><a class="headerlink" href="#netapp.api.Lock.state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="netapp.api.Lock.volume">
+<code class="descname">volume</code><a class="headerlink" href="#netapp.api.Lock.volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="netapp.api.Server">
 <em class="property">class </em><code class="descclassname">netapp.api.</code><code class="descname">Server</code><span class="sig-paren">(</span><em>hostname</em>, <em>username</em>, <em>password</em>, <em>port=443</em>, <em>transport_type='HTTPS'</em>, <em>server_type='OCUM'</em>, <em>app_name='netapp-api-python'</em>, <em>timeout_s=4</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
@@ -453,6 +477,13 @@ an empty filter call.</p>
 matters here!</p>
 <p>Access to the property is lazy, but the list of rules is
 materialised immediately.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.locks_on">
+<code class="descclassname">Server.</code><code class="descname">locks_on</code><span class="sig-paren">(</span><em>volume_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.locks_on"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.locks_on" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of locks (possibly empty) held on the volume
+volume_name.</p>
 </dd></dl>
 
 <dl class="method">
@@ -688,7 +719,7 @@ status.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.5.2',
+            VERSION:'0.6.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

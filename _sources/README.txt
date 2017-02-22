@@ -17,6 +17,7 @@ DFM:
 ONTAP:
 - Volumes (reading)
 - Snapshots (reading)
+- Locks (reading)
 
 ## Setup
 
