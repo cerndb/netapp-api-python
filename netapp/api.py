@@ -484,7 +484,7 @@ class Server(object):
         if policy_name:
             api_call.append(X('snapshot-policy', policy_name))
 
-        return self.perform_call(api_call, self.ontap_api_url, 'volume')
+        self.perform_call(api_call, self.ontap_api_url)
 
     def create_snapshot(self, volume_name, snapshot_name):
         """
@@ -495,7 +495,7 @@ class Server(object):
         api_call = X('snapshot-create',
                      X('snapshot', snapshot_name),
                      X('volume', volume_name))
-        return self.perform_call(api_call, self.ontap_api_url, 'snapshot')
+        self.perform_call(api_call, self.ontap_api_url)
 
     def restrict_volume(self, volume_name):
         """
@@ -503,10 +503,10 @@ class Server(object):
         """
 
         self.perform_call(X('volume-unmount', X('volume-name', volume_name)),
-                          self.ontap_api_url, 'volume')
+                          self.ontap_api_url)
 
         self.perform_call(X('volume-restrict', X('name', volume_name)),
-                          self.ontap_api_url, 'volume')
+                          self.ontap_api_url)
 
     def clone_volume(self, parent_volume_name, clone_name, junction_path,
                      parent_snapshot=None):
@@ -526,7 +526,7 @@ class Server(object):
         if parent_snapshot:
             api_call.append('parent-snapshot', parent_snapshot)
 
-        self.perform_call(api_call, self.ontap_api_url, 'volume')
+        self.perform_call(api_call, self.ontap_api_url)
 
     def create_export_policy(self, policy_name, rules=None):
         """
@@ -574,7 +574,7 @@ class Server(object):
                      X('super-user-security',
                        X('security-flavor', "sys")))
 
-        return self.perform_call(api_call, self.ontap_api_url, 'rule')
+        self.perform_call(api_call, self.ontap_api_url)
 
     def remove_export_rule(self, policy_name, index):
         """
@@ -584,8 +584,7 @@ class Server(object):
         self.perform_call(X('export-rule-destroy',
                             X('policy-name', policy_name),
                             X('rule-index', index)),
-                          self.ontap_api_url,
-                          'rule')
+                          self.ontap_api_url)
 
         remaining_rules = self.export_rules_of(policy_name)
 
@@ -595,8 +594,7 @@ class Server(object):
                                 X('policy-name', policy_name),
                                 X('rule-index', rule_index),
                                 X('new-rule-index', i)),
-                              self.ontap_api_url,
-                              'rule')
+                              self.ontap_api_url)
 
     def delete_export_policy(self, policy_name):
         """
@@ -605,8 +603,7 @@ class Server(object):
 
         self.perform_call(X('export-policy-destroy',
                             X('policy-name', policy_name)),
-                          self.ontap_api_url,
-                          'rule')
+                          self.ontap_api_url)
 
     def rollback_volume_from_snapshot(self, volume_name, snapshot_name):
         """
@@ -615,8 +612,7 @@ class Server(object):
         self.perform_call(X('snapshot-restore-volume',
                             X('volume', volume_name),
                             X('snapshot', snapshot_name)),
-                          self.ontap_api_url,
-                          'volume')
+                          self.ontap_api_url)
 
     def break_lock(self, volume_name, client_address):
         """
@@ -632,6 +628,30 @@ class Server(object):
         failures = self.perform_call(api_call, self.ontap_api_url,
                                      'failure-list')
         assert not failures
+
+    def set_volume_autosize(self, volume_name, max_size_kb, increment_kb,
+                            autosize_enabled):
+        """
+        Update the autosize properties of volume_name.
+        """
+        enabled_str = "true" if autosize_enabled else "false"
+        api_call = X('volume-autosize-set',
+                     X('volume', volume_name),
+                     X('increment-size', str(increment_kb)),
+                     X('maximum-size', str(max_size_kb)),
+                     X('is-enabled', enabled_str))
+
+        self.perform_call(api_call, self.ontap_api_url)
+
+
+    def delete_snapshot(self, volume_name, snapshot_name):
+        """
+        Delete the snapshot named snapshot_name.
+        """
+        self.perform_call(X('snapshot-delete',
+                            X('volume', volume_name),
+                            X('snapshot', snapshot_name)),
+                          self.ontap_api_url)
 
 
     def __init__(self, hostname, username, password, port=443,
@@ -715,7 +735,7 @@ class Server(object):
 
                 api_call = next_api_call
 
-    def perform_call(self, api_call, api_url, container_tag):
+    def perform_call(self, api_call, api_url, container_tag=None):
         """
         Perform an API call as represented by the provided XML data,
         returning a tuple of next_tag, records, where next_tag is None
@@ -728,6 +748,10 @@ class Server(object):
             <data-entry></data-entry>
             <data-entry></data-entry>
         </container_tag>
+
+        If container_tag is not provided, perform a fire-and-forget call
+        that will discard any returned data and not perform any
+        extraction.
 
         Raises an APIError on erroneous API calls.
         """
@@ -772,6 +796,8 @@ class Server(object):
 
             raise APIError(message=reason, errno=errno,
                            failing_query=request)
+        elif container_tag is None:
+            return
         else:
             num_records = int(response.xpath(('/a:netapp/a:results/'
                                               'a:num-records/text()'),
