@@ -438,8 +438,7 @@ class Server(object):
             constructor=unpack_rule,
             container_tag='attributes-list')
 
-        return [rule for _index, rule in
-                sorted(results, key=lambda x: x[0])]
+        return sorted(results, key=lambda x: x[0])
 
     def locks_on(self, volume_name):
         """
@@ -467,6 +466,173 @@ class Server(object):
                                    endpoint='ONTAP',
                                    constructor=unpack_lock,
                                    container_tag='attributes-list')
+
+    def create_volume(self, name, size_bytes, aggregate_name,
+                      junction_path, policy_name=None,
+                      percentage_snapshot_reserve=0):
+        """
+        Create a new volume on the NetApp cluster
+        """
+        api_call = X('volume-create',
+                     X('volume', name),
+                     X('containing-aggr-name', aggregate_name),
+                     X('size', str(size_bytes)),
+                     X('junction-path', junction_path),
+                     X('percentage-snapshot-reserve',
+                       str(percentage_snapshot_reserve)))
+
+        if policy_name:
+            api_call.append(X('snapshot-policy', policy_name))
+
+        return self.perform_call(api_call, self.ontap_api_url, 'volume')
+
+    def create_snapshot(self, volume_name, snapshot_name):
+        """
+        Create a new snapshot (if possible).
+
+        Raises APIError if there is no more room to create snapshots.
+        """
+        api_call = X('snapshot-create',
+                     X('snapshot', snapshot_name),
+                     X('volume', volume_name))
+        return self.perform_call(api_call, self.ontap_api_url, 'snapshot')
+
+    def restrict_volume(self, volume_name):
+        """
+        Unmount and restrict a volume.
+        """
+
+        self.perform_call(X('volume-unmount', X('volume-name', volume_name)),
+                          self.ontap_api_url, 'volume')
+
+        self.perform_call(X('volume-restrict', X('name', volume_name)),
+                          self.ontap_api_url, 'volume')
+
+    def clone_volume(self, parent_volume_name, clone_name, junction_path,
+                     parent_snapshot=None):
+        """
+        Clone an existing volume parent_volume_name into clone_name and
+        onto junction_path.
+
+        If parent_snapshot is true, use that snapshot as the base for
+        the clone.
+        """
+        api_call = X('volume-clone-create',
+                     X('junction-active', 'true'),
+                     X('junction-path', junction_path),
+                     X('parent_volume_name', parent_volume_name),
+                     X('volume', clone_name))
+
+        if parent_snapshot:
+            api_call.append('parent-snapshot', parent_snapshot)
+
+        self.perform_call(api_call, self.ontap_api_url, 'volume')
+
+    def create_export_policy(self, policy_name, rules=None):
+        """
+        Create a new export policy named policy_name, optionally with
+        rules rules (otherwise, use whatever is default).
+        """
+
+        api_call = X('export-policy-create',
+                     X('policy-name', policy_name),
+                     X('return-record', 'true'))
+
+        _next, result = self.perform_call(api_call, self.ontap_api_url,
+                                   'export-policy-info')
+
+        name = _child_get_string(result[0], 'export-policy-info',
+                                 'policy-name')
+        id = _child_get_string(result[0], 'export-policy-info',
+                               'policy-id')
+
+        if rules is not None:
+            for index, rule in enumerate(rules, start=1):
+                self.add_export-rule(policy_name, rule, index=index)
+
+        return name, id
+
+
+    def add_export_rule(self, policy_name, rule, index=1):
+        """
+        Add a new export rule to policy_name.
+
+        If no index is provided, add the rule to the head of the list
+        (lowest priority).
+        """
+        api_call = X('export-rule-create',
+                     X('policy-name', policy_name),
+                     X('client-match', rule),
+                     X('rule-index', index),
+                     X('ro-rule',
+                       X('security-flavor', "sys")),
+                     X('rw-rule',
+                       X('security-flavor', "sys")),
+                     X('anonymous-user-id', "0"),
+                     X('protocol',
+                       X('access-protocol', "nfs")),
+                     X('super-user-security',
+                       X('security-flavor', "sys")))
+
+        return self.perform_call(api_call, self.ontap_api_url, 'rule')
+
+    def remove_export_rule(self, policy_name, index):
+        """
+        Remove an export rule with a given index and re-number the
+        following indices (e.g. decrement by one).
+        """
+        self.perform_call(X('export-rule-destroy',
+                            X('policy-name', policy_name),
+                            X('rule-index', index)),
+                          self.ontap_api_url,
+                          'rule')
+
+        remaining_rules = self.export_rules_of(policy_name)
+
+        for i, index_rule in enumerate(remaining_rules, start=1):
+            rule_index, _rule = index_rule
+            self.perform_call(X('export-rule-set-index',
+                                X('policy-name', policy_name),
+                                X('rule-index', rule_index),
+                                X('new-rule-index', i)),
+                              self.ontap_api_url,
+                              'rule')
+
+    def delete_export_policy(self, policy_name):
+        """
+        Delete the export policy named policy_name, and all its rules.
+        """
+
+        self.perform_call(X('export-policy-destroy',
+                            X('policy-name', policy_name)),
+                          self.ontap_api_url,
+                          'rule')
+
+    def rollback_volume_from_snapshot(self, volume_name, snapshot_name):
+        """
+        Roll back volume_name to its previous state snapshot_name.
+        """
+        self.perform_call(X('snapshot-restore-volume',
+                            X('volume', volume_name),
+                            X('snapshot', snapshot_name)),
+                          self.ontap_api_url,
+                          'volume')
+
+    def break_lock(self, volume_name, client_address):
+        """
+        Break any locks on volume_name held by client_address.
+        """
+
+        api_call = X('lock-break-iter',
+                     X('query',
+                       X('lock-info',
+                         X('volume', volume_name),
+                         X('client-address', client_address))))
+
+        failures = self.perform_call(api_call, self.ontap_api_url,
+                                     'failure-list')
+        assert not failures
+
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
