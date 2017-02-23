@@ -79,8 +79,33 @@ VOL_FIELDS = [X('volume-id-attributes',
                    'node']]),
               X('volume-space-attributes',
                 *[X(x) for x in ['size-total', 'size-used']]),
+              X('volume-autosize-attributes',
+                *[X(x) for x in ['is-enabled', 'maximum-size',
+                                 'increment-size']]),
               X('volume-state-attributes', X('state')),
               X('volume-export-attributes', X('policy'))]
+
+
+def _read_bool(s):
+    """
+    Helper function to read a Boolean value from NetApp's XML data.
+    """
+    if s == "true":
+        return True
+    elif s == "false":
+        return False
+    else:
+        raise ValueError(s)
+
+
+def _int_or_none(s):
+    """
+    Parse a string into an integer, returning None if the string was empty.
+
+    Raises ValueError otherwise.
+    """
+
+    return int(s) if s else None
 
 
 def _child_get_string(parent, *string_hierarchy):
@@ -688,6 +713,12 @@ class Event(object):
 
 
 class Volume(object):
+    """
+    A volume in the NetApp storage system.
+
+    Do not roll your own.
+    """
+
     def __init__(self, raw_object):
         self.uuid = _child_get_string(raw_object,
                                       'volume-id-attributes',
@@ -719,6 +750,20 @@ class Volume(object):
         self.node_name = _child_get_string(raw_object,
                                            'volume-id-attributes',
                                            'node')
+
+        self.autosize_enabled = _read_bool(
+            _child_get_string(raw_object,
+                              'volume-autosize-attributes',
+                              'is-enabled'))
+
+        self.autosize_increment = _int_or_none(_child_get_string(
+            raw_object,
+            'volume-autosize-attributes',
+            'increment-size'))
+        self.max_autosize = _int_or_none(_child_get_string(
+            raw_object,
+            'volume-autosize-attributes',
+            'maximum-size'))
 
     def __str__(self):
         return "<Volume name={}>".format(self.name)
