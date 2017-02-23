@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>netapp.api &mdash; netapp-api 0.6.0 documentation</title>
+  <title>netapp.api &mdash; netapp-api 0.7.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="netapp-api 0.6.0 documentation" href="../../index.html"/>
+    <link rel="top" title="netapp-api 0.7.0 documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.6.0
+                0.7.0
               </div>
             
           
@@ -216,8 +216,33 @@
                    <span class="s1">&#39;node&#39;</span><span class="p">]]),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
                 <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;size-total&#39;</span><span class="p">,</span> <span class="s1">&#39;size-used&#39;</span><span class="p">]]),</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-autosize-attributes&#39;</span><span class="p">,</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;is-enabled&#39;</span><span class="p">,</span> <span class="s1">&#39;maximum-size&#39;</span><span class="p">,</span>
+                                 <span class="s1">&#39;increment-size&#39;</span><span class="p">]]),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;state&#39;</span><span class="p">)),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">))]</span>
+
+
+<span class="k">def</span> <span class="nf">_read_bool</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to read a Boolean value from NetApp&#39;s XML data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">s</span> <span class="o">==</span> <span class="s2">&quot;false&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_int_or_none</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse a string into an integer, returning None if the string was empty.</span>
+
+<span class="sd">    Raises ValueError otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span> <span class="k">else</span> <span class="kc">None</span>
 
 
 <span class="k">def</span> <span class="nf">_child_get_string</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">string_hierarchy</span><span class="p">):</span>
@@ -825,6 +850,12 @@
 
 
 <div class="viewcode-block" id="Volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume">[docs]</a><span class="k">class</span> <span class="nc">Volume</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A volume in the NetApp storage system.</span>
+
+<span class="sd">    Do not roll your own.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
 <div class="viewcode-block" id="Volume.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_object</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
                                       <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
@@ -855,7 +886,21 @@
             <span class="s1">&#39;containing-aggregate-name&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">node_name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
                                            <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
-                                           <span class="s1">&#39;node&#39;</span><span class="p">)</span></div>
+                                           <span class="s1">&#39;node&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">autosize_enabled</span> <span class="o">=</span> <span class="n">_read_bool</span><span class="p">(</span>
+            <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                              <span class="s1">&#39;volume-autosize-attributes&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;is-enabled&#39;</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">autosize_increment</span> <span class="o">=</span> <span class="n">_int_or_none</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-autosize-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;increment-size&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_autosize</span> <span class="o">=</span> <span class="n">_int_or_none</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-autosize-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;maximum-size&#39;</span><span class="p">))</span></div>
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;&lt;Volume name=</span><span class="si">{}</span><span class="s2">&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
@@ -925,7 +970,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.6.0',
+            VERSION:'0.7.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
