@@ -412,8 +412,8 @@ class Server(object):
 
     def export_rules_of(self, policy_name):
         """
-        Return the rules of the policy as a list. Note that order
-        matters here!
+        Return the rules of the policy as a list of index, rule
+        tuples. Note that order matters here!
 
         Access to the property is lazy, but the list of rules is
         materialised immediately.
