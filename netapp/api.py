@@ -467,7 +467,7 @@ class Server(object):
                                    constructor=unpack_lock,
                                    container_tag='attributes-list')
 
-    def create_volume(self, name, size_bytes, aggregate_name,
+    def create_volume(self, name, size_kb, aggregate_name,
                       junction_path, policy_name=None,
                       percentage_snapshot_reserve=0):
         """
@@ -476,7 +476,7 @@ class Server(object):
         api_call = X('volume-create',
                      X('volume', name),
                      X('containing-aggr-name', aggregate_name),
-                     X('size', str(size_bytes)),
+                     X('size', str(size_kb)),
                      X('junction-path', junction_path),
                      X('percentage-snapshot-reserve',
                        str(percentage_snapshot_reserve)))
@@ -653,6 +653,20 @@ class Server(object):
                             X('snapshot', snapshot_name)),
                           self.ontap_api_url)
 
+    def set_volume_export_policy(self, volume_name, policy_name):
+        """
+        Set the export policy of a given volume
+        """
+        self.perform_call(X('volume-modify-iter',
+                            X('attributes',
+                              X('volume-attributes',
+                                X('volume-export-attributes',
+                                  X('policy', policy_name)))),
+                            X('query',
+                              X('volume-attributes',
+                                X('volume-id-attributes',
+                                  X('name', volume_name))))),
+                          self.ontap_api_url)
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
