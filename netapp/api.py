@@ -107,6 +107,29 @@ def _int_or_none(s):
 
     return int(s) if s else None
 
+def _child_get_strings(parent, *string_hierarchy):
+    """
+    Helper function. In a situation where we have::
+
+       <shoes>
+          <size>
+            <european>42</european>
+          </size>
+        </shoes>
+
+    Return the strings contained within as a list with::
+
+        _child_get_strings(shoes, 'size', 'european')
+        => ["42"]
+    """
+    string_name = "/a:".join(string_hierarchy)
+
+    xpath_query = 'a:%s/text()' % string_name
+
+    matches = parent.xpath(xpath_query,
+                           namespaces={'a': XMLNS})
+    return matches
+
 
 def _child_get_string(parent, *string_hierarchy):
     """
@@ -117,14 +140,10 @@ def _child_get_string(parent, *string_hierarchy):
     order, e.g::
 
         _child_get_string(parent, "volume-id-attributes", "uuid")
+
+    This function strictly assumes either 1 or 0 matches (empty string)
     """
-    string_name = "/a:".join(string_hierarchy)
-
-    xpath_query = 'a:%s/text()' % string_name
-
-    matches = parent.xpath(xpath_query,
-                           namespaces={'a': XMLNS})
-
+    matches = _child_get_strings(parent, *string_hierarchy)
     assert len(matches) < 2, "Should only match at most one string value!"
 
     return matches[0] if matches else ""
@@ -668,6 +687,63 @@ class Server(object):
                                   X('name', volume_name))))),
                           self.ontap_api_url)
 
+    @property
+    def aggregates(self):
+        """
+        A Generator of named tuples describing aggregates on the cluster.
+        """
+
+        def unpack_aggregate(aggregate_info):
+            name = _child_get_string(aggregate_info, 'aggregate-name')
+            node_names = _child_get_strings(aggregate_info,
+                                            'nodes',
+                                            'node-name')
+            bytes_used = int(_child_get_string(aggregate_info,
+                                               'aggr-space-attributes',
+                                               'size-used'))
+            bytes_available = int(_child_get_string(aggregate_info,
+                                                    'aggr-space-attributes',
+                                                    'size-available'))
+            return Aggregate(name=name, node_names=node_names,
+                             bytes_used=bytes_used,
+                             bytes_available=bytes_available)
+
+        return self._get_paginated(X('aggr-get-iter',
+                                     X('desired-attributes',
+                                       X('aggregate-name'),
+                                       X('aggregate-space-attributes',
+                                         X('size-used'),
+                                         X('size-available')),
+                                       X('nodes'))),
+                                   endpoint='ONTAP',
+                                   container_tag='attributes-list',
+                                   constructor=unpack_aggregate)
+
+    @property
+    def vservers(self):
+        """
+        A Generator of named tuples describing vservers on the cluster.
+        """
+        def unpack_vserver(vserver_info):
+            aggrs = _child_get_strings(vserver_info, 'aggr-list', 'aggr-name')
+            state = _child_get_string(vserver_info, 'state')
+            name = _child_get_string(vserver_info, 'vserver-name')
+            uuid = _child_get_string(vserver_info, 'uuid')
+            return Vserver(name=name, uuid=uuid,
+                           aggregate_names=aggrs,
+                           state=state)
+
+        return self._get_paginated(X('vserver-get-iter',
+                                     X('desired-attributes',
+                                       X('aggr-list'),
+                                       X('state'),
+                                       X('vserver-name'),
+                                       X('uuid'))),
+                                   endpoint='ONTAP',
+                                   container_tag='attributes-list',
+                                   constructor=unpack_vserver)
+
+
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME,
@@ -983,6 +1059,8 @@ class Volume(object):
 
 
 Lock = namedtuple('Lock', 'volume, state, client_address')
+Aggregate = namedtuple('Aggregate', 'name, node_names, bytes_used, bytes_available')
+Vserver = namedtuple('Vserver', 'name, state, uuid, aggregate_names')
 
 
 class APIError(Exception):
