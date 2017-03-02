@@ -4,6 +4,8 @@
 # or submit itself to any jurisdiction.
 
 import os
+import re
+import uuid
 
 import netapp.api
 from datetime import datetime
@@ -19,7 +21,8 @@ def is_ocum_env_setup():
 def is_ontap_env_setup():
     return ('ONTAP_HOST' in os.environ
             and 'ONTAP_USERNAME' in os.environ
-            and 'ONTAP_PASSWORD' in os.environ)
+            and 'ONTAP_PASSWORD' in os.environ
+            and 'ONTAP_VSERVER' in os.environ)
 
 
 requires_ocum = pytest.mark.skipif(not is_ocum_env_setup(),
@@ -31,6 +34,8 @@ requires_ontap = pytest.mark.skipif(not is_ontap_env_setup(),
                                     reason=("ONTAP_{HOST, USERNAME, PASSWORD} "
                                             " not set up. Skipping tests"
                                             " requiring a server!"))
+
+run_id = str(uuid.uuid4()).replace("-", "_")
 
 
 @pytest.fixture
@@ -98,8 +103,11 @@ def test_list_events_after_last_event(ocum_server):
 
 @requires_ocum
 def test_pagination_same_as_without(ocum_server):
-    paginated_events = ocum_server.events.filter(max_records=2)
-    unpaginated_events = ocum_server.events.filter()
+    unpaginated_events = list(ocum_server.events.filter())
+
+    # Make sure we fetch at least two pages:
+    page_size = len(unpaginated_events)/2 - 1
+    paginated_events = ocum_server.events.filter(max_records=page_size)
 
     assert all(map(lambda x, y: x.id == y.id, paginated_events,
                    unpaginated_events))
@@ -168,10 +176,12 @@ def test_filter_volumes_paginated(ontap_server):
 
 
 @requires_ontap
-def test_filter_name(ontap_server):
+def test_filter_name_vserver(ontap_server):
     first = list(ontap_server.volumes)[0]
 
-    filtered_result = list(ontap_server.volumes.filter(name=first.name))
+    filtered_result = list(ontap_server.volumes.filter(
+        name=first.name,
+        owning_vserver_name=first.owning_vserver_name))
     assert len(filtered_result) == 1
     assert filtered_result[0].uuid == first.uuid
 
@@ -211,3 +221,62 @@ def test_get_locks(ontap_server):
     for volume in ontap_server.volumes:
         locks = list(ontap_server.locks_on(volume.name))
         assert locks or locks == []
+
+
+@requires_ontap
+def test_get_aggregates(ontap_server):
+    aggrs = list(ontap_server.aggregates)
+    assert aggrs
+
+
+@requires_ontap
+def test_get_version(ontap_server):
+    assert ontap_server.ontapi_version
+
+
+@requires_ontap
+def test_api_names(ontap_server):
+    assert 'vserver-get-iter' in ontap_server.supported_apis
+    assert 'system-get-version' in ontap_server.supported_apis
+
+
+@requires_ontap
+def test_create_destroy_volume(ontap_server):
+    for aggr in ontap_server.aggregates:
+        if not re.match("^aggr0.*", aggr.name):
+            aggregate_name = aggr.name
+            break
+
+    assert aggregate_name
+
+    volume_name = 'test_volume_{}'.format(run_id)
+    assert list(ontap_server.volumes.filter(name=volume_name)) == []
+    size_mb = 512
+
+    # Needs vserver mode
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_volume(name=volume_name,
+                                   size_bytes=("{}"
+                                               .format(size_mb * 1000 * 1000)),
+                                   aggregate_name=aggregate_name,
+                                   junction_path=("/test_volume_{}"
+                                                  .format(run_id)))
+        vol = next(ontap_server.volumes.filter(name=volume_name))
+        assert vol.name == volume_name
+        assert vol.containing_aggregate_name == aggregate_name
+        assert vol.owning_vserver_name == os.environ['ONTAP_VSERVER']
+        assert vol.size_total_bytes == size_mb * 1000 * 1000
+
+        ontap_server.unmount_volume(volume_name)
+        ontap_server.take_volume_offline(volume_name)
+        ontap_server.destroy_volume(volume_name)
+
+    # Make sure the context didn't permanently set the vserver:
+    list(ontap_server.aggregates)
+
+    assert list(ontap_server.volumes.filter(name=volume_name)) == []
+
+
+@requires_ocum
+def test_ocum_version(ocum_server):
+    assert ocum_server.ocum_version
