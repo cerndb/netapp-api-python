@@ -38,6 +38,31 @@ requires_ontap = pytest.mark.skipif(not is_ontap_env_setup(),
 run_id = str(uuid.uuid4()).replace("-", "_")
 
 
+def new_volume(server):
+    for aggr in server.aggregates:
+        if not re.match("^aggr0.*", aggr.name):
+            aggregate_name = aggr.name
+            break
+
+    size_mb = 100
+    volume_name = 'test_volume_{}'.format(run_id)
+    with server.with_vserver(os.environ['ONTAP_VSERVER']):
+        server.create_volume(name=volume_name,
+                             size_bytes=("{}"
+                                         .format(size_mb * 1000 * 1000)),
+                             aggregate_name=aggregate_name,
+                             junction_path=("/test_volume_{}"
+                                            .format(run_id)))
+    return volume_name
+
+
+def delete_volume(server, volume_name):
+    with server.with_vserver(os.environ['ONTAP_VSERVER']):
+        server.unmount_volume(volume_name)
+        server.take_volume_offline(volume_name)
+        server.destroy_volume(volume_name)
+
+
 @pytest.fixture
 def ocum_server():
     server_host = os.environ['NETAPP_HOST']
@@ -267,9 +292,7 @@ def test_create_destroy_volume(ontap_server):
         assert vol.owning_vserver_name == os.environ['ONTAP_VSERVER']
         assert vol.size_total_bytes == size_mb * 1000 * 1000
 
-        ontap_server.unmount_volume(volume_name)
-        ontap_server.take_volume_offline(volume_name)
-        ontap_server.destroy_volume(volume_name)
+        delete_volume(ontap_server, volume_name)
 
     # Make sure the context didn't permanently set the vserver:
     list(ontap_server.aggregates)
@@ -280,3 +303,86 @@ def test_create_destroy_volume(ontap_server):
 @requires_ocum
 def test_ocum_version(ocum_server):
     assert ocum_server.ocum_version
+
+
+@requires_ontap
+def test_create_with_policy(ontap_server):
+    for aggr in ontap_server.aggregates:
+        if not re.match("^aggr0.*", aggr.name):
+            aggregate_name = aggr.name
+            break
+
+    # Pick the first non-empty policy, or, if none, the last policy
+    for policy in ontap_server.export_policies:
+        policy_name = policy.name
+        if policy.rules:
+            break
+
+    volume_name = 'test_volume_{}'.format(run_id)
+    size_mb = 100
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_volume(name=volume_name,
+                                   size_bytes=("{}"
+                                               .format(size_mb * 1000 * 1000)),
+                                   aggregate_name=aggregate_name,
+                                   junction_path=("/test_volume_{}"
+                                                  .format(run_id)),
+                                   export_policy_name=policy_name)
+        vol = next(ontap_server.volumes.filter(name=volume_name))
+        assert vol.name == volume_name
+        assert vol.active_policy_name == policy_name
+        delete_volume(ontap_server, volume_name)
+
+
+@requires_ontap
+def test_create_snapshot(ontap_server):
+    volume_name = new_volume(ontap_server)
+    snapshot_name = "test_snap"
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_snapshot(volume_name, snapshot_name=snapshot_name)
+        snapshots = list(ontap_server.snapshots_of(volume_name=volume_name))
+    assert snapshot_name in snapshots
+    delete_volume(ontap_server, volume_name)
+
+
+@requires_ontap
+def test_restrict_volume(ontap_server):
+    volume_name = new_volume(ontap_server)
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.restrict_volume(volume_name)
+        vol = list(ontap_server.volumes.filter(name=volume_name))[0]
+        assert vol.state == 'restricted'
+    delete_volume(ontap_server, volume_name)
+
+
+@requires_ontap
+def test_clone_volume(ontap_server):
+    volume_name = new_volume(ontap_server)
+    clone_name = 'test_clone_{}'.format(run_id)
+    junction_path = "/test_clone_{}".format(run_id)
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.clone_volume(parent_volume_name=volume_name,
+                                  clone_name=clone_name,
+                                  junction_path=junction_path)
+        vol = list(ontap_server.volumes.filter(name=volume_name))[0]
+        clone = list(ontap_server.volumes.filter(name=clone_name))[0]
+    delete_volume(ontap_server, volume_name)
+    assert vol == clone
+
+
+@requires_ontap
+def test_create_export_policy(ontap_server):
+    rules = ["127.0.0.1", "10.10.10.1"]
+    policy_name = "test_policy_{}".format(run_id)
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_export_policy(policy_name=policy_name, rules=rules)
+
+    for policy in ontap_server.export_policies:
+        if not policy_name == policy_name:
+            continue
+
+        assert list(policy.rules) == rules
+
+    assert False

@@ -495,7 +495,7 @@ class Server(object):
                                    container_tag='attributes-list')
 
     def create_volume(self, name, size_bytes, aggregate_name,
-                      junction_path, policy_name=None,
+                      junction_path, export_policy_name=None,
                       percentage_snapshot_reserve=0):
         """
         Create a new volume on the NetApp cluster
@@ -512,8 +512,8 @@ class Server(object):
                      X('percentage-snapshot-reserve',
                        str(percentage_snapshot_reserve)))
 
-        if policy_name:
-            api_call.append(X('snapshot-policy', policy_name))
+        if export_policy_name:
+            api_call.append(X('export-policy', export_policy_name))
 
         self.perform_call(api_call, self.ontap_api_url)
 
@@ -556,7 +556,7 @@ class Server(object):
         api_call = X('volume-clone-create',
                      X('junction-active', 'true'),
                      X('junction-path', junction_path),
-                     X('parent_volume_name', parent_volume_name),
+                     X('parent-volume', parent_volume_name),
                      X('volume', clone_name))
 
         if parent_snapshot:
@@ -574,8 +574,7 @@ class Server(object):
                      X('policy-name', policy_name),
                      X('return-record', 'true'))
 
-        _next, result = self.perform_call(api_call, self.ontap_api_url,
-                                   'export-policy-info')
+        result = self.perform_call(api_call, self.ontap_api_url)
 
         name = _child_get_string(result[0], 'export-policy-info',
                                  'policy-name')
@@ -584,10 +583,9 @@ class Server(object):
 
         if rules is not None:
             for index, rule in enumerate(rules, start=1):
-                self.add_export-rule(policy_name, rule, index=index)
+                self.add_export_rule(policy_name, rule, index=index)
 
         return name, id
-
 
     def add_export_rule(self, policy_name, rule, index=1):
         """
@@ -599,7 +597,7 @@ class Server(object):
         api_call = X('export-rule-create',
                      X('policy-name', policy_name),
                      X('client-match', rule),
-                     X('rule-index', index),
+                     X('rule-index', str(index)),
                      X('ro-rule',
                        X('security-flavor', "sys")),
                      X('rw-rule',
@@ -661,9 +659,10 @@ class Server(object):
                          X('volume', volume_name),
                          X('client-address', client_address))))
 
-        failures = self.perform_call(api_call, self.ontap_api_url,
-                                     'failure-list')
-        assert not failures
+        result = self.perform_call(api_call, self.ontap_api_url)
+        for code, message in self.extract_failures(result):
+            raise APIError(message=message, errno=code)
+
 
     def set_volume_autosize(self, volume_name, max_size_kb, increment_kb,
                             autosize_enabled):
@@ -693,16 +692,19 @@ class Server(object):
         """
         Set the export policy of a given volume
         """
-        self.perform_call(X('volume-modify-iter',
-                            X('attributes',
-                              X('volume-attributes',
-                                X('volume-export-attributes',
-                                  X('policy', policy_name)))),
-                            X('query',
-                              X('volume-attributes',
-                                X('volume-id-attributes',
-                                  X('name', volume_name))))),
-                          self.ontap_api_url)
+        result = self.perform_call(X('volume-modify-iter',
+                                     X('attributes',
+                                       X('volume-attributes',
+                                         X('volume-export-attributes',
+                                           X('policy', policy_name)))),
+                                     X('query',
+                                       X('volume-attributes',
+                                         X('volume-id-attributes',
+                                           X('name', volume_name))))),
+                                   self.ontap_api_url)
+
+        for code, message in self.extract_failures(result):
+            raise APIError(message=message, errno=code)
 
     @property
     def aggregates(self):
@@ -1212,7 +1214,8 @@ class Volume(object):
 
 
 Lock = namedtuple('Lock', 'volume, state, client_address')
-Aggregate = namedtuple('Aggregate', 'name, node_names, bytes_used, bytes_available')
+Aggregate = namedtuple('Aggregate',
+                       'name, node_names, bytes_used, bytes_available')
 Vserver = namedtuple('Vserver', 'name, state, uuid, aggregate_names')
 
 
