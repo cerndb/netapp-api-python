@@ -6,10 +6,23 @@
 import os
 import re
 import uuid
+from contextlib import contextmanager
 
 import netapp.api
 from datetime import datetime
 import pytest
+import logging
+
+log = logging.getLogger(__name__)
+
+
+def policy_by_name(policies_gen, policy_name):
+    for policy in policies_gen:
+        if not policy.name == policy_name:
+            continue
+        else:
+            return policy
+    raise KeyError(policy_name)
 
 
 def is_ocum_env_setup():
@@ -38,14 +51,19 @@ requires_ontap = pytest.mark.skipif(not is_ontap_env_setup(),
 run_id = str(uuid.uuid4()).replace("-", "_")
 
 
-def new_volume(server):
-    for aggr in server.aggregates:
-        if not re.match("^aggr0.*", aggr.name):
-            aggregate_name = aggr.name
-            break
+def new_volume(server, volume_name=None):
+    with server.with_vserver(None):
+        # We can't get aggregates in vserver mode, so switch to cluster
+        # mode:
+        for aggr in server.aggregates:
+            if not re.match("^aggr0.*", aggr.name):
+                aggregate_name = aggr.name
+                break
 
     size_mb = 100
-    volume_name = 'test_volume_{}'.format(run_id)
+    if not volume_name:
+        volume_name = 'test_volume_{}'.format(run_id)
+    log.info("Creating new volume named {}".format(volume_name))
     with server.with_vserver(os.environ['ONTAP_VSERVER']):
         server.create_volume(name=volume_name,
                              size_bytes=("{}"
@@ -57,10 +75,20 @@ def new_volume(server):
 
 
 def delete_volume(server, volume_name):
+    log.info("Delete ephermeral volume {}".format(volume_name))
     with server.with_vserver(os.environ['ONTAP_VSERVER']):
         server.unmount_volume(volume_name)
         server.take_volume_offline(volume_name)
         server.destroy_volume(volume_name)
+
+
+@contextmanager
+def ephermeral_volume(server):
+    vol_name = new_volume(server)
+    try:
+        yield vol_name
+    finally:
+        delete_volume(server, vol_name)
 
 
 @pytest.fixture
@@ -105,11 +133,10 @@ def test_list_events_after(ocum_server):
 
 @requires_ocum
 def test_list_events_all_filters(ocum_server):
-    for event in ocum_server.events.filter(
-            time_range=(1470045486, 1473252714),
-            severities=['warning', 'information'],
-            states=['new']):
-        print(event)
+    list(ocum_server.events.filter(
+        time_range=(1470045486, 1473252714),
+        severities=['warning', 'information'],
+        states=['new']))
 
 
 @requires_ocum
@@ -155,8 +182,7 @@ def test_severity_warning_only_warnings(ocum_server):
 @requires_ocum
 def test_invalid_severity_filter_throws_exception(ocum_server):
     with pytest.raises(Exception):
-        for event in ocum_server.events.filter(severities=['fnord']):
-            pass
+        list(ocum_server.events.filter(severities=['fnord']))
 
 
 @requires_ocum
@@ -356,33 +382,267 @@ def test_restrict_volume(ontap_server):
     delete_volume(ontap_server, volume_name)
 
 
+@pytest.mark.xfail(reason="Not supported by license")
 @requires_ontap
 def test_clone_volume(ontap_server):
-    volume_name = new_volume(ontap_server)
-    clone_name = 'test_clone_{}'.format(run_id)
-    junction_path = "/test_clone_{}".format(run_id)
-    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
-        ontap_server.clone_volume(parent_volume_name=volume_name,
-                                  clone_name=clone_name,
-                                  junction_path=junction_path)
-        vol = list(ontap_server.volumes.filter(name=volume_name))[0]
-        clone = list(ontap_server.volumes.filter(name=clone_name))[0]
-    delete_volume(ontap_server, volume_name)
+    with ephermeral_volume(ontap_server) as volume_name:
+        clone_name = 'test_clone_{}'.format(run_id)
+        junction_path = "/test_clone_{}".format(run_id)
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.clone_volume(parent_volume_name=volume_name,
+                                      clone_name=clone_name,
+                                      junction_path=junction_path)
+            vol = list(ontap_server.volumes.filter(name=volume_name))[0]
+            clone = list(ontap_server.volumes.filter(name=clone_name))[0]
+    delete_volume(ontap_server, clone_name)
     assert vol == clone
 
 
 @requires_ontap
-def test_create_export_policy(ontap_server):
-    rules = ["127.0.0.1", "10.10.10.1"]
+def test_create_delete_export_policy_with_rules(ontap_server):
+    rules = ["127.0.0.1", "10.10.10.1", "10.10.10.12"]
     policy_name = "test_policy_{}".format(run_id)
 
     with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
         ontap_server.create_export_policy(policy_name=policy_name, rules=rules)
 
-    for policy in ontap_server.export_policies:
-        if not policy_name == policy_name:
-            continue
+    policy = policy_by_name(ontap_server.export_policies, policy_name)
+    assert [r for _id, r in policy.rules] == rules
 
-        assert list(policy.rules) == rules
+    # clean up
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.delete_export_policy(policy_name=policy_name)
 
-    assert False
+
+@requires_ontap
+def test_create_delete_export_policy_without_rules(ontap_server):
+    policy_name = "test_policy_no_rules{}".format(run_id)
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_export_policy(policy_name=policy_name)
+
+    assert policy_name in [x.name for x in ontap_server.export_policies]
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.delete_export_policy(policy_name=policy_name)
+
+    assert policy_name not in [x.name for x in ontap_server.export_policies]
+
+
+@requires_ontap
+def test_add_export_rules_no_index(ontap_server):
+    policy_name = "test_policy_add_rules{}".format(run_id)
+    rules = ["10.10.10.1", "10.10.10.2", "10.10.10.5", "127.0.0.1"]
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_export_policy(policy_name=policy_name)
+        for rule in rules[::-1]:  # wierd "martian smiley" means "reverse"
+            ontap_server.add_export_rule(policy_name=policy_name,
+                                         rule=rule)
+
+    policy = policy_by_name(ontap_server.export_policies, policy_name)
+    assert [r for _id, r in policy.rules] == rules
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.delete_export_policy(policy_name=policy_name)
+
+
+@requires_ontap
+def test_remove_export_rule(ontap_server):
+    policy_name = "test_policy_remove_rules{}".format(run_id)
+    rules = ["10.10.10.1", "10.10.10.2", "10.10.10.5", "127.0.0.1"]
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.create_export_policy(policy_name=policy_name, rules=rules)
+
+    added_policy = policy_by_name(ontap_server.export_policies, policy_name)
+
+    indices = [i for i, _r in added_policy.rules]
+
+    # remove rule #3
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.remove_export_rule(policy_name, index=indices[2])
+
+    modified_policy = policy_by_name(ontap_server.export_policies, policy_name)
+
+    # Assert correct (updated) ordering
+    for idx, rule in enumerate(modified_policy.rules, start=1):
+        r_id, r = rule
+        assert r_id == idx
+
+    # Remove the third rule from the template set as well
+    del rules[2]
+    assert [r for _id, r in modified_policy.rules] == rules
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.delete_export_policy(policy_name=policy_name)
+
+
+@pytest.mark.xfail(reason="Requires license")
+@requires_ontap
+def test_rollback_from_snapshot(ontap_server):
+    snapshot_name = "test_snap"
+    with ephermeral_volume(ontap_server) as volume_name:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.create_snapshot(volume_name,
+                                         snapshot_name=snapshot_name)
+
+            ontap_server.rollback_volume_from_snapshot(
+                volume_name=volume_name,
+                snapshot_name=snapshot_name)
+
+
+@pytest.mark.xfail(reason="Requires license")
+@requires_ontap
+def test_clone_from_snapshot(ontap_server):
+    with ephermeral_volume(ontap_server) as volume_name:
+        snapshot_name = "test_snap"
+        clone_name = 'test_clone_{}'.format(run_id)
+        junction_path = "/test_clone_{}".format(run_id)
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.create_snapshot(volume_name,
+                                         snapshot_name=snapshot_name)
+
+            ontap_server.clone_volume(parent_volume_name=volume_name,
+                                      clone_name=clone_name,
+                                      junction_path=junction_path,
+                                      parent_snapshot=snapshot_name)
+            vol = list(ontap_server.volumes.filter(name=volume_name))[0]
+            clone = list(ontap_server.volumes.filter(name=clone_name))[0]
+            delete_volume(ontap_server, clone_name)
+            assert vol == clone
+
+
+@requires_ontap
+def test_ephermeral_volume(ontap_server):
+    with pytest.raises(Exception):
+        with ephermeral_volume(ontap_server) as vn:
+            assert vn in [v.name for v in ontap_server.volumes]
+            name = vn
+            raise Exception
+
+    assert name not in [v.name for v in ontap_server.volumes]
+
+
+@requires_ontap
+def test_set_autosize_enable(ontap_server):
+    max_size_kb = 100 * 1000 * 1000
+    increment_kb = 10000
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.set_volume_autosize(
+                volume_name=vn,
+                max_size_bytes=max_size_kb * 1000,
+                increment_bytes=increment_kb * 1000,
+                autosize_enabled=True)
+            vol = next(ontap_server.volumes.filter(name=vn))
+            assert vol.autosize_enabled
+            # Sometimes there is apparently some rounding
+            # But not a factor 10 too much, we can assume:
+            assert vol.autosize_increment >= increment_kb * 1000
+            assert vol.autosize_increment <= increment_kb * 1000 * 10
+            assert vol.max_autosize >= max_size_kb * 1000
+            assert vol.max_autosize <= max_size_kb * 1000 * 10
+
+
+@requires_ontap
+def test_set_autosize_disable(ontap_server):
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.set_volume_autosize(
+                volume_name=vn,
+                max_size_bytes=1,
+                increment_bytes=1,
+                autosize_enabled=False)
+            vol = next(ontap_server.volumes.filter(name=vn))
+            assert not vol.autosize_enabled
+
+
+@requires_ontap
+def test_set_autosize_invalid_call(ontap_server):
+    with pytest.raises(TypeError):
+        ontap_server.set_volume_autosize(volume_name="bork",
+                                         autosize_enabled=True)
+
+
+@requires_ontap
+def test_set_export_policy(ontap_server):
+    policy_name = "test_policy_set_export_policy{}".format(run_id)
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.create_export_policy(policy_name=policy_name)
+            ontap_server.set_volume_export_policy(volume_name=vn,
+                                                  policy_name=policy_name)
+            vol = next(ontap_server.volumes.filter(name=vn))
+            assert vol.active_policy_name == policy_name
+
+    # Must be done after the volume is deleted:
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        ontap_server.delete_export_policy(policy_name)
+
+
+@requires_ontap
+def test_delete_snapshot(ontap_server):
+    snapshot_name = "test_snap"
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            ontap_server.create_snapshot(vn, snapshot_name=snapshot_name)
+            ontap_server.delete_snapshot(vn, snapshot_name=snapshot_name)
+        snapshots = list(ontap_server.snapshots_of(volume_name=vn))
+        assert snapshot_name not in snapshots
+
+
+@requires_ontap
+def test_get_vservers(ontap_server):
+    vservers = list(ontap_server.vservers)
+    assert vservers
+
+
+@requires_ontap
+def test_ontap_system_version(ontap_server):
+    assert ontap_server.ontap_system_version
+
+
+@requires_ontap
+def test_destroy_nonexistent_volume(ontap_server):
+    volume_name = run_id
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        with pytest.raises(netapp.api.APIError):
+            ontap_server.destroy_volume(volume_name=volume_name)
+
+
+@requires_ontap
+def test_create_existent_volume(ontap_server):
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        with ephermeral_volume(ontap_server) as vn:
+            with pytest.raises(netapp.api.APIError):
+                new_volume(ontap_server, volume_name=vn)
+
+
+@requires_ontap
+def test_offline_nonexistent_volume(ontap_server):
+    volume_name = run_id
+
+    with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+        with pytest.raises(netapp.api.APIError):
+            ontap_server.take_volume_offline(volume_name=volume_name)
+
+
+@requires_ontap
+def test_set_nonexistent_export_policy(ontap_server):
+    policy_name = "test_policy_nonexistent_export_policy{}".format(run_id)
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            with pytest.raises(netapp.api.APIError):
+                ontap_server.set_volume_export_policy(volume_name=vn,
+                                                      policy_name=policy_name)
+
+
+@requires_ontap
+def test_break_locks_nonexistent(ontap_server):
+    with ephermeral_volume(ontap_server) as vn:
+        with ontap_server.with_vserver(os.environ['ONTAP_VSERVER']):
+            with pytest.raises(netapp.api.APIError):
+                ontap_server.break_lock(volume_name=vn,
+                                        client_address="made-up-client")

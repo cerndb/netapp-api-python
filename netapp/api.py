@@ -96,6 +96,7 @@ def _read_bool(s):
     else:
         return False
 
+
 def _int_or_none(s):
     """
     Parse a string into an integer, returning None if the string was empty.
@@ -104,6 +105,7 @@ def _int_or_none(s):
     """
 
     return int(s) if s else None
+
 
 def _child_get_int(parent, *string_hierarchy):
     """
@@ -114,6 +116,7 @@ def _child_get_int(parent, *string_hierarchy):
         return int(_child_get_string(parent, *string_hierarchy))
     except ValueError:
         return None
+
 
 def _child_get_strings(parent, *string_hierarchy):
     """
@@ -455,7 +458,7 @@ class Server(object):
                          X('policy-name', policy_name))))
 
         def unpack_rule(export_rule_info):
-            index = _child_get_string(export_rule_info, 'rule-index')
+            index = _child_get_int(export_rule_info, 'rule-index')
             rule = _child_get_string(export_rule_info, 'client-match')
             return index, rule
 
@@ -560,7 +563,7 @@ class Server(object):
                      X('volume', clone_name))
 
         if parent_snapshot:
-            api_call.append('parent-snapshot', parent_snapshot)
+            api_call.append(X('parent-snapshot', parent_snapshot))
 
         self.perform_call(api_call, self.ontap_api_url)
 
@@ -617,7 +620,7 @@ class Server(object):
         """
         self.perform_call(X('export-rule-destroy',
                             X('policy-name', policy_name),
-                            X('rule-index', index)),
+                            X('rule-index', str(index))),
                           self.ontap_api_url)
 
         remaining_rules = self.export_rules_of(policy_name)
@@ -626,8 +629,8 @@ class Server(object):
             rule_index, _rule = index_rule
             self.perform_call(X('export-rule-set-index',
                                 X('policy-name', policy_name),
-                                X('rule-index', rule_index),
-                                X('new-rule-index', i)),
+                                X('rule-index', str(rule_index)),
+                                X('new-rule-index', str(i))),
                               self.ontap_api_url)
 
     def delete_export_policy(self, policy_name):
@@ -651,6 +654,8 @@ class Server(object):
     def break_lock(self, volume_name, client_address):
         """
         Break any locks on volume_name held by client_address.
+
+        Raises an APIError if there was no such lock or no such volume.
         """
 
         api_call = X('lock-break-iter',
@@ -660,24 +665,27 @@ class Server(object):
                          X('client-address', client_address))))
 
         result = self.perform_call(api_call, self.ontap_api_url)
-        for code, message in self.extract_failures(result):
-            raise APIError(message=message, errno=code)
+        self.raise_on_non_single_answer(result)
 
-
-    def set_volume_autosize(self, volume_name, max_size_kb, increment_kb,
-                            autosize_enabled):
+    def set_volume_autosize(self, volume_name, autosize_enabled,
+                            max_size_bytes=None, increment_bytes=None):
         """
         Update the autosize properties of volume_name.
         """
         enabled_str = "true" if autosize_enabled else "false"
+        if autosize_enabled:
+            if not (max_size_bytes and increment_bytes):
+                raise TypeError("Must provide max_size_bytes"
+                                " and increment_bytes when enabling autosize!")
+
         api_call = X('volume-autosize-set',
                      X('volume', volume_name),
-                     X('increment-size', str(increment_kb)),
-                     X('maximum-size', str(max_size_kb)),
                      X('is-enabled', enabled_str))
+        if autosize_enabled:
+            api_call.append(X('increment-size', str(increment_bytes)))
+            api_call.append(X('maximum-size', str(max_size_bytes)))
 
         self.perform_call(api_call, self.ontap_api_url)
-
 
     def delete_snapshot(self, volume_name, snapshot_name):
         """
@@ -703,8 +711,7 @@ class Server(object):
                                            X('name', volume_name))))),
                                    self.ontap_api_url)
 
-        for code, message in self.extract_failures(result):
-            raise APIError(message=message, errno=code)
+        self.raise_on_non_single_answer(result)
 
     @property
     def aggregates(self):
@@ -827,6 +834,8 @@ class Server(object):
 
             s.create_volume(...) # fails
             s.aggregates # succeeds
+
+        If vserver is none or the empty string, switch to cluster mode.
         """
         old_vfiler = self.vfiler
         self.vfiler = vserver
@@ -845,7 +854,6 @@ class Server(object):
         for code, message in self.extract_failures(result):
             raise APIError(message=message, errno=code)
 
-
     def take_volume_offline(self, volume_name):
         """
         Take a volume offline. Must be unmounted first.
@@ -854,20 +862,17 @@ class Server(object):
         sure you are on the correct vserver using with_vserver() or
         similar!
         """
-        result = self.perform_call(X('volume-modify-iter',
-                                     X('attributes',
-                                       X('volume-attributes',
-                                         X('volume-state-attributes',
-                                           X('state', 'offline')))),
-                                     X('query',
-                                       X('volume-attributes',
-                                         X('volume-id-attributes',
-                                           X('name', volume_name))))),
-                                   self.ontap_api_url)
-
-        for code, message in self.extract_failures(result):
-            raise APIError(message=message, errno=code)
-
+        api_call = X('volume-modify-iter',
+                     X('attributes',
+                       X('volume-attributes',
+                         X('volume-state-attributes',
+                           X('state', 'offline')))),
+                     X('query',
+                       X('volume-attributes',
+                         X('volume-id-attributes',
+                           X('name', volume_name)))))
+        result = self.perform_call(api_call, self.ontap_api_url)
+        self.raise_on_non_single_answer(result)
 
     def extract_failures(self, result):
         """
@@ -886,6 +891,20 @@ class Server(object):
             message = error.find('a:error-message',
                                  namespaces={'a': XMLNS}).text
             yield (code, message)
+
+    def raise_on_non_single_answer(self, result):
+        num_successes = _child_get_int(result, 'results',
+                                       'num-succeeded')
+        num_failures = _child_get_int(result, 'results',
+                                      'num-failed')
+
+        for code, message in self.extract_failures(result):
+            raise APIError(message=message, errno=code)
+
+        if not (num_successes == 1 and num_failures == 0):
+            raise APIError(message=("Unexpected answer: got"
+                                    " {} results, {} failures!"
+                                    .format(num_successes, num_failures)))
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
@@ -1057,7 +1076,7 @@ class Server(object):
                                    namespaces={'a': XMLNS})[0]
 
             raise APIError(message=reason, errno=errno,
-                           failing_query=request)
+                           failing_query=query_root)
 
         return response
 
@@ -1229,17 +1248,25 @@ class APIError(Exception):
     and failing_query (the XML query that was processed as the error
     occurred, if available).
     """
-    def __init__(self, message="", errno=None, failing_query=None):
-        self.msg = message
+    def __init__(self, message="", errno="{no error #}", failing_query=None):
+        self.msg = message.rstrip(". ")
         self.errno = errno
-        self.failing_query = failing_query
+
+        try:
+            self.failing_query = lxml.etree.tostring(failing_query,
+                                                     pretty_print=True)
+        except TypeError:
+            if failing_query:
+                self.failing_query = str(failing_query)
+            else:
+                self.failing_query = None
 
     def __str__(self):
         if self.failing_query:
-            offq = ". Offending query: \n %s".format(self.failing_query)
+            offq = ". Offending query: \n {}".format(self.failing_query)
         else:
             offq = ""
 
-        str = "API Error %s: %s%s" % (self.errno, self.msg, offq)
+        str = "API Error {}: {}{}".format(self.errno, self.msg, offq)
 
         return str
