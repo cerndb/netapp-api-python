@@ -65,6 +65,10 @@ Set the environment variables to a host running NetApp OCUM
 `NETAPP_HOST`, `NETAPP_USERNAME`, and `NETAPP_PASSWORD` and run
 `pytest`. To test ONTAP set `ONTAP_HOST`, etc.
 
+Offline tests are enabled using Betamax, which records test data from
+interaction with the servers and stores it in the cassettes
+directory. One "cassette" is generated per test.
+
 ## Generating documentation
 
 Documentation via Sphinx is available (more or less). You can generate
