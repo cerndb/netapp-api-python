@@ -18,8 +18,8 @@ with betamax.Betamax.configure() as config:
                                        base64.b64encode(
                                            ('{0}:{1}'
                                             .format(netapp_username,
-                                                    netapp_password)
-                                            .encode('utf-8'))))
+                                                    netapp_password)).encode('utf-8'))
+                                       .decode('utf-8'))
     # Replace the base64-encoded username:password string in the
     # basicauth headers with a placeholder to avoid exposing cleartext
     # passwords in checked-in content.
@@ -27,5 +27,5 @@ with betamax.Betamax.configure() as config:
                                        base64.b64encode(
                                            ('{0}:{1}'
                                             .format(ontap_username,
-                                                    ontap_password)
-                                            .encode('utf-8'))))
+                                                    ontap_password)).encode('utf-8'))
+                                       .decode('utf-8'))
