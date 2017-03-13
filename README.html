@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>About &mdash; netapp-api 0.7.0 documentation</title>
+  <title>About &mdash; netapp-api 0.8.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="netapp-api 0.7.0 documentation" href="index.html"/>
+    <link rel="top" title="netapp-api 0.8.0 documentation" href="index.html"/>
         <link rel="next" title="Source Documentation" href="netapp.html"/>
         <link rel="prev" title="Welcome to netapp-api’s documentation!" href="index.html"/> 
 
@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                0.7.0
+                0.8.0
               </div>
             
           
@@ -90,6 +90,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#implemented-features">Implemented Features</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="#examples">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#setup">Setup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#testing">Testing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#generating-documentation">Generating documentation</a></li>
@@ -163,6 +164,31 @@ ZAPI.</p>
 </ul>
 </div>
 </div>
+<div class="section" id="examples">
+<span id="examples"></span><h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
+<p>Connect to a server:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">Server</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;netapp-1234&quot;</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+           <span class="n">password</span><span class="o">=</span><span class="s2">&quot;admin123&quot;</span><span class="p">)</span>
+
+</pre></div>
+</div>
+<p>Get a secific event:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">event</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">single_by_id</span><span class="p">(</span><span class="mi">13</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Filter events:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">greater_than_id</span><span class="o">=</span><span class="mi">13</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pagination is automatically handled via Python generators:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">max_records</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+        <span class="c1"># Will perform multiple queries under the hood</span>
+</pre></div>
+</div>
+</div>
 <div class="section" id="setup">
 <span id="setup"></span><h1>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h1>
 <ol class="simple">
@@ -176,6 +202,9 @@ ZAPI.</p>
 <p>Set the environment variables to a host running NetApp OCUM
 <code class="docutils literal"><span class="pre">NETAPP_HOST</span></code>, <code class="docutils literal"><span class="pre">NETAPP_USERNAME</span></code>, and <code class="docutils literal"><span class="pre">NETAPP_PASSWORD</span></code> and run
 <code class="docutils literal"><span class="pre">pytest</span></code>. To test ONTAP set <code class="docutils literal"><span class="pre">ONTAP_HOST</span></code>, etc.</p>
+<p>Offline tests are enabled using Betamax, which records test data from
+interaction with the servers and stores it in the cassettes
+directory. One &#8220;cassette&#8221; is generated per test.</p>
 </div>
 <div class="section" id="generating-documentation">
 <span id="generating-documentation"></span><h1>Generating documentation<a class="headerlink" href="#generating-documentation" title="Permalink to this headline">¶</a></h1>
@@ -233,7 +262,7 @@ or submit itself to any jurisdiction.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.0',
+            VERSION:'0.8.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

@@ -19,6 +19,39 @@ ONTAP:
 - Snapshots (reading)
 - Locks (reading)
 
+## Examples
+
+Connect to a server:
+
+``` python
+
+s = Server(hostname="netapp-1234", username="admin",
+           password="admin123")
+
+```
+
+Get a secific event:
+
+``` python
+event = s.events.single_by_id(13)
+``` 
+
+Filter events:
+
+
+``` python
+for event in s.events.filter(greater_than_id=13):
+    print(event)
+```
+
+Pagination is automatically handled via Python generators:
+
+``` python
+for event in s.events.filter(max_records=4):
+        print(event)
+        # Will perform multiple queries under the hood
+```
+
 ## Setup
 
 1. `mkvirtualenv netapp-api-python`
@@ -31,6 +64,10 @@ ONTAP:
 Set the environment variables to a host running NetApp OCUM
 `NETAPP_HOST`, `NETAPP_USERNAME`, and `NETAPP_PASSWORD` and run
 `pytest`. To test ONTAP set `ONTAP_HOST`, etc.
+
+Offline tests are enabled using Betamax, which records test data from
+interaction with the servers and stores it in the cassettes
+directory. One "cassette" is generated per test.
 
 ## Generating documentation
 
