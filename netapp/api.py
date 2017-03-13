@@ -45,6 +45,7 @@ enabled::
 from datetime import datetime
 import logging
 from collections import namedtuple
+from contextlib import contextmanager
 
 import netapp.vocabulary as V
 
@@ -76,7 +77,7 @@ VOL_FIELDS = [X('volume-id-attributes',
                 *[X(x) for x in
                   ['name', 'uuid', 'junction-path',
                    'containing-aggregate-name',
-                   'node']]),
+                   'node', 'owning-vserver-name']]),
               X('volume-space-attributes',
                 *[X(x) for x in ['size-total', 'size-used']]),
               X('volume-autosize-attributes',
@@ -92,10 +93,8 @@ def _read_bool(s):
     """
     if s == "true":
         return True
-    elif s == "false":
-        return False
     else:
-        raise ValueError(s)
+        return False
 
 
 def _int_or_none(s):
@@ -108,6 +107,41 @@ def _int_or_none(s):
     return int(s) if s else None
 
 
+def _child_get_int(parent, *string_hierarchy):
+    """
+    Perform the same task as _child_get_string, but return an Integer.
+    """
+
+    try:
+        return int(_child_get_string(parent, *string_hierarchy))
+    except ValueError:
+        return None
+
+
+def _child_get_strings(parent, *string_hierarchy):
+    """
+    Helper function. In a situation where we have::
+
+       <shoes>
+          <size>
+            <european>42</european>
+          </size>
+        </shoes>
+
+    Return the strings contained within as a list with::
+
+        _child_get_strings(shoes, 'size', 'european')
+        => ["42"]
+    """
+    string_name = "/a:".join(string_hierarchy)
+
+    xpath_query = 'a:%s/text()' % string_name
+
+    matches = parent.xpath(xpath_query,
+                           namespaces={'a': XMLNS})
+    return matches
+
+
 def _child_get_string(parent, *string_hierarchy):
     """
     Helper function: search parent for its corresponding string value
@@ -117,14 +151,10 @@ def _child_get_string(parent, *string_hierarchy):
     order, e.g::
 
         _child_get_string(parent, "volume-id-attributes", "uuid")
+
+    This function strictly assumes either 1 or 0 matches (empty string)
     """
-    string_name = "/a:".join(string_hierarchy)
-
-    xpath_query = 'a:%s/text()' % string_name
-
-    matches = parent.xpath(xpath_query,
-                           namespaces={'a': XMLNS})
-
+    matches = _child_get_strings(parent, *string_hierarchy)
     assert len(matches) < 2, "Should only match at most one string value!"
 
     return matches[0] if matches else ""
@@ -412,8 +442,8 @@ class Server(object):
 
     def export_rules_of(self, policy_name):
         """
-        Return the rules of the policy as a list. Note that order
-        matters here!
+        Return the rules of the policy as a list of index, rule
+        tuples. Note that order matters here!
 
         Access to the property is lazy, but the list of rules is
         materialised immediately.
@@ -428,7 +458,7 @@ class Server(object):
                          X('policy-name', policy_name))))
 
         def unpack_rule(export_rule_info):
-            index = _child_get_string(export_rule_info, 'rule-index')
+            index = _child_get_int(export_rule_info, 'rule-index')
             rule = _child_get_string(export_rule_info, 'client-match')
             return index, rule
 
@@ -438,8 +468,7 @@ class Server(object):
             constructor=unpack_rule,
             container_tag='attributes-list')
 
-        return [rule for _index, rule in
-                sorted(results, key=lambda x: x[0])]
+        return sorted(results, key=lambda x: x[0])
 
     def locks_on(self, volume_name):
         """
@@ -468,10 +497,420 @@ class Server(object):
                                    constructor=unpack_lock,
                                    container_tag='attributes-list')
 
+    def create_volume(self, name, size_bytes, aggregate_name,
+                      junction_path, export_policy_name=None,
+                      percentage_snapshot_reserve=0):
+        """
+        Create a new volume on the NetApp cluster
+
+        size_bytes is assumed to be in bytes, but if given as a string
+        with a suffix ("k", "m", "g" or "t" for kilobytes, megabytes,
+        gigabytes and terabytes respectively), use that suffix.
+        """
+        api_call = X('volume-create',
+                     X('volume', name),
+                     X('containing-aggr-name', aggregate_name),
+                     X('size', str(size_bytes)),
+                     X('junction-path', junction_path),
+                     X('percentage-snapshot-reserve',
+                       str(percentage_snapshot_reserve)))
+
+        if export_policy_name:
+            api_call.append(X('export-policy', export_policy_name))
+
+        self.perform_call(api_call, self.ontap_api_url)
+
+    def create_snapshot(self, volume_name, snapshot_name):
+        """
+        Create a new snapshot (if possible).
+
+        Raises APIError if there is no more room to create snapshots.
+        """
+        api_call = X('snapshot-create',
+                     X('snapshot', snapshot_name),
+                     X('volume', volume_name))
+        self.perform_call(api_call, self.ontap_api_url)
+
+    def unmount_volume(self, volume_name):
+        """
+        Unmount a volume
+        """
+        self.perform_call(X('volume-unmount', X('volume-name', volume_name)),
+                          self.ontap_api_url)
+
+    def restrict_volume(self, volume_name):
+        """
+        Unmount and restrict a volume.
+        """
+
+        self.unmount_volume(volume_name)
+        self.perform_call(X('volume-restrict', X('name', volume_name)),
+                          self.ontap_api_url)
+
+    def clone_volume(self, parent_volume_name, clone_name, junction_path,
+                     parent_snapshot=None):
+        """
+        Clone an existing volume parent_volume_name into clone_name and
+        onto junction_path.
+
+        If parent_snapshot is true, use that snapshot as the base for
+        the clone.
+        """
+        api_call = X('volume-clone-create',
+                     X('junction-active', 'true'),
+                     X('junction-path', junction_path),
+                     X('parent-volume', parent_volume_name),
+                     X('volume', clone_name))
+
+        if parent_snapshot:
+            api_call.append(X('parent-snapshot', parent_snapshot))
+
+        self.perform_call(api_call, self.ontap_api_url)
+
+    def create_export_policy(self, policy_name, rules=None):
+        """
+        Create a new export policy named policy_name, optionally with
+        rules rules (otherwise, use whatever is default).
+        """
+
+        api_call = X('export-policy-create',
+                     X('policy-name', policy_name),
+                     X('return-record', 'true'))
+
+        result = self.perform_call(api_call, self.ontap_api_url)
+
+        name = _child_get_string(result[0], 'export-policy-info',
+                                 'policy-name')
+        id = _child_get_string(result[0], 'export-policy-info',
+                               'policy-id')
+
+        if rules is not None:
+            for index, rule in enumerate(rules, start=1):
+                self.add_export_rule(policy_name, rule, index=index)
+
+        return name, id
+
+    def add_export_rule(self, policy_name, rule, index=1):
+        """
+        Add a new export rule to policy_name.
+
+        If no index is provided, add the rule to the head of the list
+        (lowest priority).
+        """
+        api_call = X('export-rule-create',
+                     X('policy-name', policy_name),
+                     X('client-match', rule),
+                     X('rule-index', str(index)),
+                     X('ro-rule',
+                       X('security-flavor', "sys")),
+                     X('rw-rule',
+                       X('security-flavor', "sys")),
+                     X('anonymous-user-id', "0"),
+                     X('protocol',
+                       X('access-protocol', "nfs")),
+                     X('super-user-security',
+                       X('security-flavor', "sys")))
+
+        self.perform_call(api_call, self.ontap_api_url)
+
+    def remove_export_rule(self, policy_name, index):
+        """
+        Remove an export rule with a given index and re-number the
+        following indices (e.g. decrement by one).
+        """
+        self.perform_call(X('export-rule-destroy',
+                            X('policy-name', policy_name),
+                            X('rule-index', str(index))),
+                          self.ontap_api_url)
+
+        remaining_rules = self.export_rules_of(policy_name)
+
+        for i, index_rule in enumerate(remaining_rules, start=1):
+            rule_index, _rule = index_rule
+            self.perform_call(X('export-rule-set-index',
+                                X('policy-name', policy_name),
+                                X('rule-index', str(rule_index)),
+                                X('new-rule-index', str(i))),
+                              self.ontap_api_url)
+
+    def delete_export_policy(self, policy_name):
+        """
+        Delete the export policy named policy_name, and all its rules.
+        """
+
+        self.perform_call(X('export-policy-destroy',
+                            X('policy-name', policy_name)),
+                          self.ontap_api_url)
+
+    def rollback_volume_from_snapshot(self, volume_name, snapshot_name):
+        """
+        Roll back volume_name to its previous state snapshot_name.
+        """
+        self.perform_call(X('snapshot-restore-volume',
+                            X('volume', volume_name),
+                            X('snapshot', snapshot_name)),
+                          self.ontap_api_url)
+
+    def break_lock(self, volume_name, client_address):
+        """
+        Break any locks on volume_name held by client_address.
+
+        Raises an APIError if there was no such lock or no such volume.
+        """
+
+        api_call = X('lock-break-iter',
+                     X('query',
+                       X('lock-info',
+                         X('volume', volume_name),
+                         X('client-address', client_address))))
+
+        result = self.perform_call(api_call, self.ontap_api_url)
+        self.raise_on_non_single_answer(result)
+
+    def set_volume_autosize(self, volume_name, autosize_enabled,
+                            max_size_bytes=None, increment_bytes=None):
+        """
+        Update the autosize properties of volume_name.
+        """
+        enabled_str = "true" if autosize_enabled else "false"
+        if autosize_enabled:
+            if not (max_size_bytes and increment_bytes):
+                raise TypeError("Must provide max_size_bytes"
+                                " and increment_bytes when enabling autosize!")
+
+        api_call = X('volume-autosize-set',
+                     X('volume', volume_name),
+                     X('is-enabled', enabled_str))
+        if autosize_enabled:
+            api_call.append(X('increment-size', str(increment_bytes)))
+            api_call.append(X('maximum-size', str(max_size_bytes)))
+
+        self.perform_call(api_call, self.ontap_api_url)
+
+    def delete_snapshot(self, volume_name, snapshot_name):
+        """
+        Delete the snapshot named snapshot_name.
+        """
+        self.perform_call(X('snapshot-delete',
+                            X('volume', volume_name),
+                            X('snapshot', snapshot_name)),
+                          self.ontap_api_url)
+
+    def set_volume_export_policy(self, volume_name, policy_name):
+        """
+        Set the export policy of a given volume
+        """
+        result = self.perform_call(X('volume-modify-iter',
+                                     X('attributes',
+                                       X('volume-attributes',
+                                         X('volume-export-attributes',
+                                           X('policy', policy_name)))),
+                                     X('query',
+                                       X('volume-attributes',
+                                         X('volume-id-attributes',
+                                           X('name', volume_name))))),
+                                   self.ontap_api_url)
+
+        self.raise_on_non_single_answer(result)
+
+    @property
+    def aggregates(self):
+        """
+        A Generator of named tuples describing aggregates on the cluster.
+        """
+
+        def unpack_aggregate(aggregate_info):
+            name = _child_get_string(aggregate_info, 'aggregate-name')
+            node_names = _child_get_strings(aggregate_info,
+                                            'nodes',
+                                            'node-name')
+            bytes_used = int(_child_get_string(aggregate_info,
+                                               'aggr-space-attributes',
+                                               'size-used'))
+            bytes_available = int(_child_get_string(aggregate_info,
+                                                    'aggr-space-attributes',
+                                                    'size-available'))
+            return Aggregate(name=name, node_names=node_names,
+                             bytes_used=bytes_used,
+                             bytes_available=bytes_available)
+
+        return self._get_paginated(X('aggr-get-iter',
+                                     X('desired-attributes',
+                                       X('aggregate-name'),
+                                       X('aggregate-space-attributes',
+                                         X('size-used'),
+                                         X('size-available')),
+                                       X('nodes'))),
+                                   endpoint='ONTAP',
+                                   container_tag='attributes-list',
+                                   constructor=unpack_aggregate)
+
+    @property
+    def vservers(self):
+        """
+        A Generator of named tuples describing vservers on the cluster.
+        """
+        def unpack_vserver(vserver_info):
+            aggrs = _child_get_strings(vserver_info, 'aggr-list', 'aggr-name')
+            state = _child_get_string(vserver_info, 'state')
+            name = _child_get_string(vserver_info, 'vserver-name')
+            uuid = _child_get_string(vserver_info, 'uuid')
+            return Vserver(name=name, uuid=uuid,
+                           aggregate_names=aggrs,
+                           state=state)
+
+        return self._get_paginated(X('vserver-get-iter',
+                                     X('desired-attributes',
+                                       X('aggr-list'),
+                                       X('state'),
+                                       X('vserver-name'),
+                                       X('uuid'))),
+                                   endpoint='ONTAP',
+                                   container_tag='attributes-list',
+                                   constructor=unpack_vserver)
+
+    @property
+    def ontap_system_version(self):
+        """
+        The system version as a string.
+        """
+        results = self.perform_call(X('system-get-version'),
+                                    api_url=self.ontap_api_url)
+        return _child_get_string(results, 'results', 'version')
+
+    @property
+    def ontapi_version(self):
+        """
+        Return the ONTAPI version as major.minor.
+        """
+        results = self.perform_call(X('system-get-ontapi-version'),
+                                    api_url=self.ontap_api_url)
+        major = _child_get_string(results, 'results', 'major-version')
+        minor = _child_get_string(results, 'results', 'minor-version')
+        return "{}.{}".format(major, minor)
+
+    @property
+    def ocum_version(self):
+        """
+        The OCUM API version as a string.
+        """
+        results = self.perform_call(X('system-about'),
+                                    api_url=self.ocum_api_url)
+        return _child_get_string(results, 'results', 'version')
+
+    @property
+    def supported_apis(self):
+        """
+        Return the list of API names supported by the server.
+
+        Only works on ONTAPI servers.
+        """
+
+        results = self.perform_call(X('system-api-list'),
+                                    api_url=self.ontap_api_url)
+        return _child_get_strings(results,
+                                  'results',
+                                  'apis',
+                                  'system-api-info',
+                                  'name')
+
+    @contextmanager
+    def with_vserver(self, vserver):
+        """
+        A Context to temporarily set the vserver/vfiler (it's the same
+        thing) during a set of operations, and then reset it to cluster
+        mode (or whatever vserver it was configured to use previously)
+        again.
+
+        Needed for several operations, among others volume creation.
+
+        Example::
+
+            # Assumption: s is a ONTAPI server object with no vserver set.
+
+            with s.with_vserver("vsrac11"):
+                s.create_volume(...) # succeeds
+                s.aggregates # fails
+
+            s.create_volume(...) # fails
+            s.aggregates # succeeds
+
+        If vserver is none or the empty string, switch to cluster mode.
+        """
+        old_vfiler = self.vfiler
+        self.vfiler = vserver
+        yield
+        self.vfiler = old_vfiler
+
+    def destroy_volume(self, volume_name):
+        """
+        Permamently delete a volume. Must be offline.
+        """
+
+        result = self.perform_call(X('volume-destroy',
+                                     X('name', volume_name)),
+                                   self.ontap_api_url)
+
+        for code, message in self.extract_failures(result):
+            raise APIError(message=message, errno=code)
+
+    def take_volume_offline(self, volume_name):
+        """
+        Take a volume offline. Must be unmounted first.
+
+        Warning: will take *all* volumes with that name offline. Make
+        sure you are on the correct vserver using with_vserver() or
+        similar!
+        """
+        api_call = X('volume-modify-iter',
+                     X('attributes',
+                       X('volume-attributes',
+                         X('volume-state-attributes',
+                           X('state', 'offline')))),
+                     X('query',
+                       X('volume-attributes',
+                         X('volume-id-attributes',
+                           X('name', volume_name)))))
+        result = self.perform_call(api_call, self.ontap_api_url)
+        self.raise_on_non_single_answer(result)
+
+    def extract_failures(self, result):
+        """
+        In the case of a call (as returned from `perform_call()`) that
+        returns a <failure-list>, extract these as a generator.
+
+        Returns (well, generates):
+            a list of tuples of error_code, message, if any. Empty list
+            if not.
+        """
+        errors = result.xpath(('/a:netapp/a:results/'
+                               'a:failure-list/*'),
+                              namespaces={'a': XMLNS})
+        for error in errors:
+            code = int(error.find('a:error-code', namespaces={'a': XMLNS}).text)
+            message = error.find('a:error-message',
+                                 namespaces={'a': XMLNS}).text
+            yield (code, message)
+
+    def raise_on_non_single_answer(self, result):
+        num_successes = _child_get_int(result, 'results',
+                                       'num-succeeded')
+        num_failures = _child_get_int(result, 'results',
+                                      'num-failed')
+
+        for code, message in self.extract_failures(result):
+            raise APIError(message=message, errno=code)
+
+        if not (num_successes == 1 and num_failures == 0):
+            raise APIError(message=("Unexpected answer: got"
+                                    " {} results, {} failures!"
+                                    .format(num_successes, num_failures)))
+
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME,
-                 timeout_s=DEFAULT_TIMEOUT):
+                 timeout_s=DEFAULT_TIMEOUT,
+                 vserver=""):
         """
         Instantiate a new server connection. Provided details are:
 
@@ -482,6 +921,7 @@ class Server(object):
           server
         :param timeout_s: The timeout in seconds for each connection to
           a NetApp filer. Passed as-is to Requests.
+        :param vserver: The virtual server to use, if any.
         """
 
         self.hostname = hostname
@@ -492,6 +932,7 @@ class Server(object):
         self.app_name = app_name
         self.session = requests.Session()
         self.timeout_s = timeout_s
+        self.vfiler = vserver
 
     def close(self):
         """
@@ -522,34 +963,54 @@ class Server(object):
         else:
             raise ValueError(endpoint)
 
+        counter = 0
         while page_left_to_process:
+            counter += 1
+            log.debug("Getting page {}!".format(counter))
+            response = self.perform_call(api_call, api_url)
+            if container_tag is None:
+                return
 
-            next_tag, raw_events = self.perform_call(api_call, api_url,
-                                                     container_tag)
+            num_records = int(
+                response.xpath(('/a:netapp/a:results/'
+                                'a:num-records/text()'),
+                               namespaces={'a': XMLNS})[0])
 
-            for ev in raw_events:
-                yield constructor(ev)
+            records = response.xpath(
+                '/a:netapp/a:results/a:{}/*'
+                .format(container_tag),
+                namespaces={'a': XMLNS})
 
-            # is there another page?
-            if next_tag is None:
+            assert num_records == len(records)
+
+            for el in records:
+                yield constructor(el)
+
+            next_tag = None
+            potential_next_tag = response.xpath(
+                ('/a:netapp/a:results/'
+                 'a:next-tag/text()'),
+                namespaces={'a': XMLNS})
+            # Is there another page?
+            if not potential_next_tag:
                 break
-            else:
-                next_api_call = api_call
 
-                # According to the specification, we need to preserve
-                # all options, but we also need to replace any previous
-                # occurrences of 'tag'.
+            # There was
+            next_tag = potential_next_tag[0]
+            next_api_call = api_call
 
-                tag_element = next_api_call.find('tag')
+            # According to the specification, we need to preserve
+            # all options, but we also need to replace any previous
+            # occurrences of 'tag'.
 
-                if tag_element is not None:
-                    next_api_call.remove(tag_element)
+            tag_element = next_api_call.find('tag')
+            if tag_element is not None:
+                next_api_call.remove(tag_element)
 
-                next_api_call.append(V.tag(next_tag))
+            next_api_call.append(V.tag(next_tag))
+            api_call = next_api_call
 
-                api_call = next_api_call
-
-    def perform_call(self, api_call, api_url, container_tag):
+    def perform_call(self, api_call, api_url):
         """
         Perform an API call as represented by the provided XML data,
         returning a tuple of next_tag, records, where next_tag is None
@@ -563,13 +1024,23 @@ class Server(object):
             <data-entry></data-entry>
         </container_tag>
 
-        Raises an APIError on erroneous API calls.
+        If container_tag is not provided, perform a fire-and-forget call
+        that will discard any returned data and not perform any
+        extraction.
+
+        Raises an APIError on erroneous API calls. Please note that
+        calls performing batch-operations that return errors in a
+        <failure-list> will return their results without triggering
+        APIErrors, as the call itself has technically (by NetApp's
+        definition) succeeded.
         """
 
         query_root = V.netapp(api_call,
                               xmlns=XMLNS,
                               version=XMLNS_VERSION,
                               nmsdk_app=self.app_name)
+        if self.vfiler:
+            query_root.attrib['vfiler'] = self.vfiler
 
         request = lxml.etree.tostring(query_root, xml_declaration=True,
                                       encoding="UTF-8")
@@ -605,27 +1076,9 @@ class Server(object):
                                    namespaces={'a': XMLNS})[0]
 
             raise APIError(message=reason, errno=errno,
-                           failing_query=request)
-        else:
-            num_records = int(response.xpath(('/a:netapp/a:results/'
-                                              'a:num-records/text()'),
-                                             namespaces={'a': XMLNS})[0])
+                           failing_query=query_root)
 
-            records = response.xpath('/a:netapp/a:results/a:{}/*'
-                                     .format(container_tag),
-                                     namespaces={'a': XMLNS})
-
-            assert num_records == len(records)
-
-            next_tag = None
-
-            potential_next_tag = response.xpath(('/a:netapp/a:results/'
-                                                 'a:next-tag/text()'),
-                                                namespaces={'a': XMLNS})
-            if potential_next_tag:
-                next_tag = potential_next_tag[0]
-
-            return next_tag, records
+        return response
 
 
 class Event(object):
@@ -729,14 +1182,14 @@ class Volume(object):
         self.active_policy_name = _child_get_string(raw_object,
                                                     'volume-export-attributes',
                                                     'policy')
-        self.size_total_bytes = int(_child_get_string(
+        self.size_total_bytes = _child_get_int(
             raw_object,
             'volume-space-attributes',
-            'size-total'))
-        self.size_used_bytes = int(_child_get_string(
+            'size-total')
+        self.size_used_bytes = _child_get_int(
             raw_object,
             'volume-space-attributes',
-            'size-used'))
+            'size-used')
         self.state = _child_get_string(raw_object,
                                        'volume-state-attributes',
                                        'state')
@@ -764,9 +1217,12 @@ class Volume(object):
             raw_object,
             'volume-autosize-attributes',
             'maximum-size'))
+        self.owning_vserver_name = _child_get_string(raw_object,
+                                                     'volume-id-attributes',
+                                                     'owning-vserver-name')
 
     def __str__(self):
-        return "<Volume name={}>".format(self.name)
+        return str("Volume{}".format(self.__dict__))
 
     def __eq__(self, other):
         return(isinstance(other, self.__class__)
@@ -777,6 +1233,9 @@ class Volume(object):
 
 
 Lock = namedtuple('Lock', 'volume, state, client_address')
+Aggregate = namedtuple('Aggregate',
+                       'name, node_names, bytes_used, bytes_available')
+Vserver = namedtuple('Vserver', 'name, state, uuid, aggregate_names')
 
 
 class APIError(Exception):
@@ -789,14 +1248,25 @@ class APIError(Exception):
     and failing_query (the XML query that was processed as the error
     occurred, if available).
     """
-    def __init__(self, message="", errno=None, failing_query=None):
-        self.msg = message
+    def __init__(self, message="", errno="{no error #}", failing_query=None):
+        self.msg = message.rstrip(". ")
         self.errno = errno
-        self.failing_query = failing_query
+
+        try:
+            self.failing_query = lxml.etree.tostring(failing_query,
+                                                     pretty_print=True)
+        except TypeError:
+            if failing_query:
+                self.failing_query = str(failing_query)
+            else:
+                self.failing_query = None
 
     def __str__(self):
-        str = "API Error %s: %s. Offending query: \n %s" % (self.errno,
-                                                            self.msg,
-                                                            self.failing_query)
+        if self.failing_query:
+            offq = ". Offending query: \n {}".format(self.failing_query)
+        else:
+            offq = ""
+
+        str = "API Error {}: {}{}".format(self.errno, self.msg, offq)
 
         return str
