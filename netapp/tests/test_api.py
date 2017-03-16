@@ -15,6 +15,7 @@ import betamax
 
 
 log = logging.getLogger(__name__)
+MAX_EVENTS = 100
 
 
 def policy_by_name(policies_gen, policy_name):
@@ -77,18 +78,12 @@ def ocum_server():
     server_host = os.environ.get('NETAPP_HOST', 'db-51195')
     server_username = os.environ.get('NETAPP_USERNAME', "user-placeholder")
     server_password = os.environ.get('NETAPP_PASSWORD', "password-placeholder")
-    global count_ocum_server
 
     s = netapp.api.Server(hostname=server_host, username=server_username,
                           password=server_password)
 
     recorder = betamax.Betamax(s.session)
-
-    cassette_name = 'ocum_server_%d' % count_ocum_server
-    with recorder.use_cassette(cassette_name):
-        log.info("Using Betamax cassette {}".format(cassette_name))
-        yield s
-        count_ocum_server += 1
+    yield (recorder, s)
 
 
 @pytest.fixture
@@ -96,56 +91,65 @@ def ontap_server():
     server_host = os.environ.get('ONTAP_HOST', 'dbnasa-cluster-mgmt')
     server_username = os.environ.get('ONTAP_USERNAME', 'user-placeholder')
     server_password = os.environ.get('ONTAP_PASSWORD', 'password-placeholder')
-    global count_ontap_server
 
     s = netapp.api.Server(hostname=server_host, username=server_username,
                           password=server_password)
 
     recorder = betamax.Betamax(s.session)
-
-    cassette_name = 'ontap_server_%d' % count_ontap_server
-    with recorder.use_cassette(cassette_name):
-        log.info("Using Betamax cassette {}".format(cassette_name))
-        yield s
-        count_ontap_server += 1
+    yield (recorder, s)
 
 
 def test_list_all_events(ocum_server):
+    recorder, server = ocum_server
+
     found_anything = False
-    for event in ocum_server.events:
-        found_anything = True
-        assert event
+    with recorder.use_cassette('list_all_events'):
+        for count, event in enumerate(server.events):
+            found_anything = True
+            assert event
+            if count >= MAX_EVENTS:
+                break
 
     assert found_anything
 
 
 def test_list_events_after(ocum_server):
+    recorder, server = ocum_server
+
     found_anything = False
-    for event in ocum_server.events.filter(greater_than_id=0):
-        found_anything = True
-        assert event
+    with recorder.use_cassette('list_events_after'):
+        for count, event in enumerate(server.events.filter(greater_than_id=0)):
+            found_anything = True
+            assert event
+            if count >= MAX_EVENTS:
+                break
 
     assert found_anything
 
 
 def test_list_events_all_filters(ocum_server):
-    list(ocum_server.events.filter(
-        time_range=(1470045486, 1473252714),
-        severities=['warning', 'information'],
-        states=['new']))
+    recorder, server = ocum_server
+
+    with recorder.use_cassette('list_all_filters'):
+        list(server.events.filter(
+            time_range=(1470045486, 1473252714),
+            severities=['warning', 'information'],
+            states=['new']))
 
 
 def test_list_events_after_last_event(ocum_server):
+    recorder, server = ocum_server
     last_event = None
-    for event in ocum_server.events:
-        last_event = event
+    with recorder.use_cassette('after_last'):
+        for event in server.events:
+            last_event = event
 
-    last_time = last_event.timestamp + 1
-    now = datetime.now().strftime('%s')
+        last_time = last_event.timestamp + 1
+        now = datetime.now().strftime('%s')
 
-    for event in ocum_server.events.filter(time_range=(last_time, now)):
-        print(event)
-        assert False
+        for event in server.events.filter(time_range=(last_time, now)):
+            print(event)
+            assert False
 
 
 def test_pagination_same_as_without(ocum_server):
@@ -599,3 +603,51 @@ def test_break_locks_nonexistent(ontap_server):
             with pytest.raises(netapp.api.APIError):
                 ontap_server.break_lock(volume_name=vn,
                                         client_address="made-up-client")
+
+
+def test_volume_read_compression_status(ontap_server):
+    recorder, server = ontap_server
+    with recorder.use_cassette('read_compression_status'):
+        for volume in server.volumes:
+            assert hasattr(volume, 'compression_enabled')
+            assert hasattr(volume, 'inline_compression')
+            return
+
+
+def test_volume_set_get_compression_status(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('set_read_compression_status'):
+        with ephermeral_volume(server) as volume_name:
+            vol = server.volumes.single(volume_name=volume_name)
+            with server.with_vserver(vol.owning_vserver_name):
+                server.set_compression(vol.name, enabled=True, inline=True)
+                vol_updated = server.volumes.single(volume_name=volume_name)
+                assert vol_updated.compression_enabled is True
+                assert vol_updated.inline_compression is True
+
+
+def test_volume_compression_on_by_default(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('compression_default_status'):
+        with ephermeral_volume(server) as volume_name:
+            vol = server.volumes.single(volume_name=volume_name)
+            assert vol.compression_enabled
+            assert vol.inline_compression
+
+
+def test_volume_compression_disable(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('compression_disable'):
+        with ephermeral_volume(server) as volume_name:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.set_compression(volume_name, enabled=False,
+                                       inline=False)
+                vol = server.volumes.single(volume_name=volume_name)
+                assert not vol.compression_enabled
+                assert not vol.inline_compression
+
+                server.set_compression(volume_name, enabled=False,
+                                       inline=False)
