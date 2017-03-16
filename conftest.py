@@ -14,6 +14,11 @@ ontap_password = os.environ.get('ONTAP_PASSWORD', 'password-placeholder')
 with betamax.Betamax.configure() as config:
     config.cassette_library_dir = 'netapp/tests/cassettes'
     config.default_cassette_options['serialize_with'] = 'prettyjson'
+    config.default_cassette_options['match_requests_on'] = [
+        'method',
+        'uri',
+        'body',
+    ]
     config.define_cassette_placeholder('<OCUM-AUTH>',
                                        base64.b64encode(
                                            ('{0}:{1}'

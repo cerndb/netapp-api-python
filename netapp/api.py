@@ -325,6 +325,69 @@ class Server(object):
             # Applying an empty filter <==> get everything
             return self.filter()
 
+        def single(self, volume_name, vserver=None):
+            """
+            Return a single volume, raising a IndexError if no volume matched.
+            """
+            if vserver:
+                volumes = list(self.filter(name=volume_name, vserver=vserver))
+            else:
+                volumes = list(self.filter(name=volume_name))
+            assert len(volumes) == 1
+            return volumes[0]
+
+
+        def make_volume(self, attributes_list):
+            name = _child_get_string(attributes_list,
+                                     'volume-id-attributes',
+                                     'name')
+            vserver = _child_get_string(attributes_list,
+                                        'volume-id-attributes',
+                                        'owning-vserver-name')
+
+            sis_path = "/vol/{}".format(name)
+            sis_api_call = X('sis-get-iter',
+                             X('desired-attributes',
+                               X('sis-status-info',
+                                 X('is-compression-enabled'),
+                                 X('is-inline-compression-enabled'))),
+                             X('query',
+                               X('sis-status-info',
+                                 X('path', sis_path),
+                                 X('vserver', vserver))))
+
+            def extract_compression(attributes_list):
+                compression_enabled = _read_bool(_child_get_string(
+                    attributes_list,
+                    'is-compression-enabled'))
+
+                inline_enabled = _read_bool(_child_get_string(
+                    attributes_list,
+                    'is-inline-compression-enabled'))
+
+                return compression_enabled, inline_enabled
+
+            result = self.server._get_paginated(
+                api_call=sis_api_call,
+                endpoint='ONTAP',
+                constructor=extract_compression,
+                container_tag='attributes-list')
+
+            try:
+                compression, inline = next(result)
+            except StopIteration:
+                # If we didn't get any hits, it meant the entire SIS
+                # subsystem was disabled, and thus compression *cannot*
+                # be enabled.
+                #
+                # This is not documented anywhere.
+                log.info("SIS was disabled for volume {}. Compression = off"
+                         .format(name))
+                compression, inline = (False, False)
+
+            return Volume(attributes_list, compression=compression,
+                          inline=inline)
+
         def filter(self, max_records=None, **query):
             """
             Usage:
@@ -363,7 +426,7 @@ class Server(object):
             return self.server._get_paginated(
                 api_call,
                 endpoint='ONTAP',
-                constructor=Volume,
+                constructor=self.make_volume,
                 container_tag="attributes-list")
 
     class ExportPolicy(object):
@@ -499,7 +562,9 @@ class Server(object):
 
     def create_volume(self, name, size_bytes, aggregate_name,
                       junction_path, export_policy_name=None,
-                      percentage_snapshot_reserve=0):
+                      percentage_snapshot_reserve=0,
+                      compression=True,
+                      inline_compression=True):
         """
         Create a new volume on the NetApp cluster
 
@@ -519,6 +584,9 @@ class Server(object):
             api_call.append(X('export-policy', export_policy_name))
 
         self.perform_call(api_call, self.ontap_api_url)
+
+        self.set_compression(volume_name=name, enabled=compression,
+                             inline=inline_compression)
 
     def create_snapshot(self, volume_name, snapshot_name):
         """
@@ -906,6 +974,33 @@ class Server(object):
                                     " {} results, {} failures!"
                                     .format(num_successes, num_failures)))
 
+    def set_compression(self, volume_name, enabled=True, inline=True):
+        ERR_ALREADY_ENABLED = 13001
+
+        if not enabled and inline:
+            raise ValueError("Inline compression cannot be enabled alone!")
+
+        path = "/vol/{}".format(volume_name)
+
+        sis_enable_call = X('sis-enable',
+                            X('path', path))
+        sis_set_config_call = X('sis-set-config',
+                                X('enable-compression', str(enabled).lower()),
+                                X('enable-inline-compression', (str(inline)
+                                                                .lower())),
+                                X('path', path))
+
+        try:
+
+            self.perform_call(sis_enable_call, self.ontap_api_url)
+        except APIError as e:
+            if e.errno == ERR_ALREADY_ENABLED:
+                log.info("SIS already enabled for {}".format(volume_name))
+            else:
+                raise e
+
+        self.perform_call(sis_set_config_call, self.ontap_api_url)
+
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
                  app_name=DEFAULT_APP_NAME,
@@ -1072,8 +1167,8 @@ class Server(object):
             reason = response.xpath('/a:netapp/a:results/@reason',
                                     namespaces={'a': XMLNS})[0]
 
-            errno = response.xpath('/a:netapp/a:results/@errno',
-                                   namespaces={'a': XMLNS})[0]
+            errno = int(response.xpath('/a:netapp/a:results/@errno',
+                                       namespaces={'a': XMLNS})[0])
 
             raise APIError(message=reason, errno=errno,
                            failing_query=query_root)
@@ -1172,7 +1267,9 @@ class Volume(object):
     Do not roll your own.
     """
 
-    def __init__(self, raw_object):
+    def __init__(self, raw_object, compression, inline):
+        self.compression_enabled = compression
+        self.inline_compression = inline
         self.uuid = _child_get_string(raw_object,
                                       'volume-id-attributes',
                                       'uuid')
