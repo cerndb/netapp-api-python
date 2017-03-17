@@ -140,7 +140,8 @@ def test_list_events_all_filters(ocum_server):
 def test_list_events_after_last_event(ocum_server):
     recorder, server = ocum_server
     last_event = None
-    with recorder.use_cassette('after_last'):
+    with recorder.use_cassette('after_last',
+                               match_requests_on=['method', 'uri']):
         for event in server.events:
             last_event = event
 
@@ -153,210 +154,274 @@ def test_list_events_after_last_event(ocum_server):
 
 
 def test_pagination_same_as_without(ocum_server):
-    unpaginated_events = list(ocum_server.events.filter())
+    recorder, server = ocum_server
 
-    # Make sure we fetch at least two pages:
-    page_size = len(unpaginated_events)/2 - 1
-    paginated_events = ocum_server.events.filter(max_records=page_size)
+    with recorder.use_cassette('pagination'):
+        unpaginated_events = list(server.events.filter())
 
-    assert all(map(lambda x, y: x.id == y.id, paginated_events,
-                   unpaginated_events))
+        # Make sure we fetch at least two pages:
+        page_size = len(unpaginated_events)/2 - 1
+        paginated_events = server.events.filter(max_records=page_size)
+
+        assert all(map(lambda x, y: x.id == y.id, paginated_events,
+                       unpaginated_events))
 
 
 def test_no_filter_same_as_all(ocum_server):
-    plain_events = ocum_server.events
-    events_from_filter = ocum_server.events.filter()
-    assert all(map(lambda x, y: x.id == y.id, plain_events,
-                   events_from_filter))
+    recorder, server = ocum_server
+
+    with recorder.use_cassette('no_filter_same_as_all'):
+        plain_events = server.events
+        events_from_filter = server.events.filter()
+        assert all(map(lambda x, y: x.id == y.id, plain_events,
+                       events_from_filter))
 
 
 def test_severity_warning_only_warnings(ocum_server):
-    for event in ocum_server.events.filter(severities=['warning']):
-        assert event.severity == 'warning'
+    recorder, server = ocum_server
+
+    with recorder.use_cassette('only_warning'):
+        for event in server.events.filter(severities=['warning']):
+            assert event.severity == 'warning'
 
 
 def test_invalid_severity_filter_throws_exception(ocum_server):
-    with pytest.raises(Exception):
-        list(ocum_server.events.filter(severities=['fnord']))
+    recorder, server = ocum_server
+
+    with recorder.use_cassette('invalid_severity'):
+        with pytest.raises(netapp.api.APIError):
+            list(server.events.filter(severities=['fnord']))
 
 
 def test_get_known_event_id(ocum_server):
     known_event = None
+    recorder, server = ocum_server
 
-    for event in ocum_server.events:
-        known_event = event
-        break
+    with recorder.use_cassette('known_event_id'):
+        for event in server.events:
+            known_event = event
+            break
 
-    single_event = ocum_server.events.single_by_id(known_event.id)
+        single_event = server.events.single_by_id(known_event.id)
 
-    assert single_event
-    assert single_event.id == known_event.id
-    assert single_event.name == known_event.name
+        assert single_event
+        assert single_event.id == known_event.id
+        assert single_event.name == known_event.name
 
 
 def test_get_nonexistent_event_id(ocum_server):
     last_event_id = 0
+    recorder, server = ocum_server
 
-    for event in ocum_server.events:
-        last_event_id = event.id
+    with recorder.use_cassette('nonexistent_event_id'):
+        for event in server.events:
+            last_event_id = event.id
 
-    with pytest.raises(KeyError):
-        ocum_server.events.single_by_id(last_event_id + 10)
+        with pytest.raises(KeyError):
+            server.events.single_by_id(last_event_id + 10)
 
 
 def test_get_all_volumes(ontap_server):
-    for volume in ontap_server.volumes:
-        assert volume.name
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('all_volumes'):
+        for volume in server.volumes:
+            assert volume.name
 
 
 def test_filter_volumes_paginated(ontap_server):
-    unpaginated = set([x.uuid for x in ontap_server.volumes])
-    paginated = set([x.uuid for x in
-                     ontap_server.volumes.filter(max_records=2)])
+    recorder, server = ontap_server
 
-    assert unpaginated == paginated
+    with recorder.use_cassette('paginated_volumes'):
+        unpaginated = set([x.uuid for x in server.volumes])
+        paginated = set([x.uuid for x in
+                         server.volumes.filter(max_records=2)])
+
+        assert unpaginated == paginated
 
 
 def test_filter_name_vserver(ontap_server):
-    first = list(ontap_server.volumes)[0]
+    recorder, server = ontap_server
 
-    filtered_result = list(ontap_server.volumes.filter(
-        name=first.name,
-        owning_vserver_name=first.owning_vserver_name))
-    assert len(filtered_result) == 1
-    assert filtered_result[0].uuid == first.uuid
+    with recorder.use_cassette('filter_name_vserver'):
+        first = list(server.volumes)[0]
+
+        filtered_result = list(server.volumes.filter(
+            name=first.name,
+            owning_vserver_name=first.owning_vserver_name))
+        assert len(filtered_result) == 1
+        assert filtered_result[0].uuid == first.uuid
 
 
 def test_filter_uuid(ontap_server):
-    first = list(ontap_server.volumes)[0]
+    recorder, server = ontap_server
 
-    filtered_result = list(ontap_server.volumes.filter(uuid=first.uuid))
-    assert len(filtered_result) == 1
-    assert filtered_result[0].uuid == first.uuid
+    with recorder.use_cassette('filter_uuid'):
+        first = list(server.volumes)[0]
+
+        filtered_result = list(server.volumes.filter(uuid=first.uuid))
+        assert len(filtered_result) == 1
+        assert filtered_result[0].uuid == first.uuid
 
 
 def test_get_snapshots(ontap_server):
-    snapshots = []
-    for vol in ontap_server.volumes:
-        snapshots += list(ontap_server.snapshots_of(vol.name))
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('snapshots'):
+        snapshots = []
+        for vol in server.volumes:
+            snapshots += list(server.snapshots_of(vol.name))
 
     assert snapshots
 
 
 def test_get_export_policies(ontap_server):
-    assert 'default' in [x.name for x in ontap_server.export_policies]
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('export_policies'):
+        assert 'default' in [x.name for x in server.export_policies]
 
 
 def test_get_export_rules(ontap_server):
-    for policy in ontap_server.export_policies:
-        # Rules can be empty, but we need to force them to be realised
-        assert policy.rules or policy.rules == []
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('export_rules'):
+        for policy in server.export_policies:
+            # Rules can be empty, but we need to force them to be realised
+            assert policy.rules or policy.rules == []
 
 
 def test_get_locks(ontap_server):
-    for volume in ontap_server.volumes:
-        locks = list(ontap_server.locks_on(volume.name))
-        assert locks or locks == []
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('get_locks'):
+        for volume in server.volumes:
+            locks = list(server.locks_on(volume.name))
+            assert locks or locks == []
 
 
 def test_get_aggregates(ontap_server):
-    aggrs = list(ontap_server.aggregates)
-    assert aggrs
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('list_aggrs'):
+        aggrs = list(server.aggregates)
+        assert aggrs
 
 
 def test_get_version(ontap_server):
-    assert ontap_server.ontapi_version
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('get_version'):
+        assert server.ontapi_version
 
 
 def test_api_names(ontap_server):
-    assert 'vserver-get-iter' in ontap_server.supported_apis
-    assert 'system-get-version' in ontap_server.supported_apis
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('supported_apis',
+                               match_requests_on=['method', 'uri']):
+        assert 'vserver-get-iter' in server.supported_apis
+        assert 'system-get-version' in server.supported_apis
 
 
 def test_create_destroy_volume(ontap_server):
-    for aggr in ontap_server.aggregates:
-        if not re.match("^aggr0.*", aggr.name):
-            aggregate_name = aggr.name
-            break
+    recorder, server = ontap_server
 
-    assert aggregate_name
+    with recorder.use_cassette('destroy_volume'):
+        for aggr in server.aggregates:
+            if not re.match("^aggr0.*", aggr.name):
+                aggregate_name = aggr.name
+                break
 
-    volume_name = 'test_volume_{}'.format(run_id)
-    assert list(ontap_server.volumes.filter(name=volume_name)) == []
-    size_mb = 512
+        assert aggregate_name
 
-    # Needs vserver mode
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_volume(name=volume_name,
-                                   size_bytes=("{}"
-                                               .format(size_mb * 1000 * 1000)),
-                                   aggregate_name=aggregate_name,
-                                   junction_path=("/test_volume_{}"
-                                                  .format(run_id)))
-        vol = next(ontap_server.volumes.filter(name=volume_name))
-        assert vol.name == volume_name
-        assert vol.containing_aggregate_name == aggregate_name
-        assert vol.owning_vserver_name == ONTAP_VSERVER
-        assert vol.size_total_bytes == size_mb * 1000 * 1000
+        volume_name = 'test_volume_{}'.format(run_id)
+        assert list(server.volumes.filter(name=volume_name)) == []
+        size_mb = 512
 
-        delete_volume(ontap_server, volume_name)
+        # Needs vserver mode
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_volume(name=volume_name,
+                                 size_bytes=("{}"
+                                             .format(size_mb * 1000 * 1000)),
+                                 aggregate_name=aggregate_name,
+                                 junction_path=("/test_volume_{}"
+                                                .format(run_id)))
+            vol = next(server.volumes.filter(name=volume_name))
+            assert vol.name == volume_name
+            assert vol.containing_aggregate_name == aggregate_name
+            assert vol.owning_vserver_name == ONTAP_VSERVER
+            assert vol.size_total_bytes == size_mb * 1000 * 1000
 
-    # Make sure the context didn't permanently set the vserver:
-    list(ontap_server.aggregates)
+            delete_volume(server, volume_name)
 
-    assert list(ontap_server.volumes.filter(name=volume_name)) == []
+        # Make sure the context didn't permanently set the vserver:
+        list(server.aggregates)
+
+        assert list(server.volumes.filter(name=volume_name)) == []
 
 
 def test_ocum_version(ocum_server):
-    assert ocum_server.ocum_version
+    recorder, server = ocum_server
+
+    with recorder.use_cassette('ocum_version'):
+        assert server.ocum_version
 
 
 def test_create_with_policy(ontap_server):
-    for aggr in ontap_server.aggregates:
-        if not re.match("^aggr0.*", aggr.name):
-            aggregate_name = aggr.name
-            break
+    recorder, server = ontap_server
 
-    # Pick the first non-empty policy, or, if none, the last policy
-    for policy in ontap_server.export_policies:
-        policy_name = policy.name
-        if policy.rules:
-            break
+    with recorder.use_cassette('create_with_policy'):
+        for aggr in server.aggregates:
+            if not re.match("^aggr0.*", aggr.name):
+                aggregate_name = aggr.name
+                break
 
-    volume_name = 'test_volume_{}'.format(run_id)
-    size_mb = 100
+        # Pick the first non-empty policy, or, if none, the last policy
+        for policy in server.export_policies:
+            policy_name = policy.name
+            if policy.rules:
+                break
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_volume(name=volume_name,
-                                   size_bytes=("{}"
-                                               .format(size_mb * 1000 * 1000)),
-                                   aggregate_name=aggregate_name,
-                                   junction_path=("/test_volume_{}"
-                                                  .format(run_id)),
-                                   export_policy_name=policy_name)
-        vol = next(ontap_server.volumes.filter(name=volume_name))
-        assert vol.name == volume_name
-        assert vol.active_policy_name == policy_name
-        delete_volume(ontap_server, volume_name)
+        volume_name = 'test_volume_{}'.format(run_id)
+        size_mb = 100
+
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_volume(name=volume_name,
+                                 size_bytes=("{}"
+                                             .format(size_mb * 1000 * 1000)),
+                                 aggregate_name=aggregate_name,
+                                 junction_path=("/test_volume_{}"
+                                                .format(run_id)),
+                                 export_policy_name=policy_name)
+            vol = server.volumes.single(volume_name=volume_name)
+            assert vol.name == volume_name
+            assert vol.active_policy_name == policy_name
+            delete_volume(server, volume_name)
 
 
 def test_create_snapshot(ontap_server):
-    volume_name = new_volume(ontap_server)
-    snapshot_name = "test_snap"
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_snapshot(volume_name, snapshot_name=snapshot_name)
-        snapshots = list(ontap_server.snapshots_of(volume_name=volume_name))
-    assert snapshot_name in snapshots
-    delete_volume(ontap_server, volume_name)
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('create_snapshot'):
+        volume_name = new_volume(server)
+        snapshot_name = "test_snap"
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_snapshot(volume_name, snapshot_name=snapshot_name)
+            snapshots = list(server.snapshots_of(volume_name=volume_name))
+            assert snapshot_name in snapshots
+            delete_volume(server, volume_name)
 
 
 def test_restrict_volume(ontap_server):
-    volume_name = new_volume(ontap_server)
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.restrict_volume(volume_name)
-        vol = list(ontap_server.volumes.filter(name=volume_name))[0]
-        assert vol.state == 'restricted'
-    delete_volume(ontap_server, volume_name)
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('restrict_volume'):
+        with ephermeral_volume(server) as volume_name:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.restrict_volume(volume_name)
+                vol = server.volumes.single(volume_name=volume_name)
+                assert vol.state == 'restricted'
 
 
 @pytest.mark.xfail(reason="Not supported by license")
