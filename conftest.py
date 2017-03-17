@@ -17,7 +17,6 @@ with betamax.Betamax.configure() as config:
     config.default_cassette_options['match_requests_on'] = [
         'method',
         'uri',
-        'body',
     ]
     config.define_cassette_placeholder('<OCUM-AUTH>',
                                        base64.b64encode(
