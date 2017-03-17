@@ -9,6 +9,7 @@ import re
 from contextlib import contextmanager
 import logging
 from datetime import datetime
+from itertools import islice
 
 import pytest
 import betamax
@@ -104,11 +105,9 @@ def test_list_all_events(ocum_server):
 
     found_anything = False
     with recorder.use_cassette('list_all_events'):
-        for count, event in enumerate(server.events):
+        for event in islice(server.events, MAX_EVENTS):
             found_anything = True
             assert event
-            if count >= MAX_EVENTS:
-                break
 
     assert found_anything
 
@@ -118,11 +117,10 @@ def test_list_events_after(ocum_server):
 
     found_anything = False
     with recorder.use_cassette('list_events_after'):
-        for count, event in enumerate(server.events.filter(greater_than_id=0)):
+        for event in islice(server.events.filter(greater_than_id=0),
+                            MAX_EVENTS):
             found_anything = True
             assert event
-            if count >= MAX_EVENTS:
-                break
 
     assert found_anything
 
@@ -149,7 +147,6 @@ def test_list_events_after_last_event(ocum_server):
         now = datetime.now().strftime('%s')
 
         for event in server.events.filter(time_range=(last_time, now)):
-            print(event)
             assert False
 
 
@@ -171,8 +168,8 @@ def test_no_filter_same_as_all(ocum_server):
     recorder, server = ocum_server
 
     with recorder.use_cassette('no_filter_same_as_all'):
-        plain_events = server.events
-        events_from_filter = server.events.filter()
+        plain_events = islice(server.events, MAX_EVENTS)
+        events_from_filter = islice(server.events.filter(), MAX_EVENTS)
         assert all(map(lambda x, y: x.id == y.id, plain_events,
                        events_from_filter))
 
@@ -181,7 +178,8 @@ def test_severity_warning_only_warnings(ocum_server):
     recorder, server = ocum_server
 
     with recorder.use_cassette('only_warning'):
-        for event in server.events.filter(severities=['warning']):
+        for event in islice(server.events.filter(severities=['warning']),
+                            MAX_EVENTS):
             assert event.severity == 'warning'
 
 
@@ -426,93 +424,104 @@ def test_restrict_volume(ontap_server):
 
 @pytest.mark.xfail(reason="Not supported by license")
 def test_clone_volume(ontap_server):
-    with ephermeral_volume(ontap_server) as volume_name:
-        clone_name = 'test_clone_{}'.format(run_id)
-        junction_path = "/test_clone_{}".format(run_id)
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.clone_volume(parent_volume_name=volume_name,
-                                      clone_name=clone_name,
-                                      junction_path=junction_path)
-            vol = list(ontap_server.volumes.filter(name=volume_name))[0]
-            clone = list(ontap_server.volumes.filter(name=clone_name))[0]
-    delete_volume(ontap_server, clone_name)
-    assert vol == clone
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('clone_volume'):
+        with ephermeral_volume(server) as volume_name:
+            clone_name = 'test_clone_{}'.format(run_id)
+            junction_path = "/test_clone_{}".format(run_id)
+            with server.with_vserver(ONTAP_VSERVER):
+                server.clone_volume(parent_volume_name=volume_name,
+                                    clone_name=clone_name,
+                                    junction_path=junction_path)
+                vol = server.volumes.single(volume_name=volume_name)
+                clone = server.volumes.single(volume_name=clone_name)
+        delete_volume(server, clone_name)
+        assert vol == clone
 
 
 def test_create_delete_export_policy_with_rules(ontap_server):
     rules = ["127.0.0.1", "10.10.10.1", "10.10.10.12"]
     policy_name = "test_policy_{}".format(run_id)
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_export_policy(policy_name=policy_name, rules=rules)
+    with recorder.use_cassette('create_delete_export_policy'):
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_export_policy(policy_name=policy_name, rules=rules)
 
-    policy = policy_by_name(ontap_server.export_policies, policy_name)
-    assert [r for _id, r in policy.rules] == rules
+            policy = policy_by_name(server.export_policies, policy_name)
+            assert [r for _id, r in policy.rules] == rules
 
-    # clean up
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.delete_export_policy(policy_name=policy_name)
+        # clean up
+        with server.with_vserver(ONTAP_VSERVER):
+            server.delete_export_policy(policy_name=policy_name)
 
 
 def test_create_delete_export_policy_without_rules(ontap_server):
     policy_name = "test_policy_no_rules{}".format(run_id)
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_export_policy(policy_name=policy_name)
+    with recorder.use_cassette('create_delete_export_policy_no_rules'):
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_export_policy(policy_name=policy_name)
 
-    assert policy_name in [x.name for x in ontap_server.export_policies]
+        assert policy_name in [x.name for x in server.export_policies]
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.delete_export_policy(policy_name=policy_name)
+        with server.with_vserver(ONTAP_VSERVER):
+            server.delete_export_policy(policy_name=policy_name)
 
-    assert policy_name not in [x.name for x in ontap_server.export_policies]
+        assert policy_name not in [x.name for x in server.export_policies]
 
 
 def test_add_export_rules_no_index(ontap_server):
     policy_name = "test_policy_add_rules{}".format(run_id)
     rules = ["10.10.10.1", "10.10.10.2", "10.10.10.5", "127.0.0.1"]
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_export_policy(policy_name=policy_name)
-        for rule in rules[::-1]:  # wierd "martian smiley" means "reverse"
-            ontap_server.add_export_rule(policy_name=policy_name,
-                                         rule=rule)
+    with recorder.use_cassette('indexless_export_rule_add'):
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_export_policy(policy_name=policy_name)
+            for rule in rules[::-1]:  # wierd "martian smiley" means "reverse"
+                server.add_export_rule(policy_name=policy_name,
+                                       rule=rule)
 
-    policy = policy_by_name(ontap_server.export_policies, policy_name)
-    assert [r for _id, r in policy.rules] == rules
+        policy = policy_by_name(server.export_policies, policy_name)
+        assert [r for _id, r in policy.rules] == rules
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.delete_export_policy(policy_name=policy_name)
+        with server.with_vserver(ONTAP_VSERVER):
+            server.delete_export_policy(policy_name=policy_name)
 
 
 def test_remove_export_rule(ontap_server):
     policy_name = "test_policy_remove_rules{}".format(run_id)
     rules = ["10.10.10.1", "10.10.10.2", "10.10.10.5", "127.0.0.1"]
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.create_export_policy(policy_name=policy_name, rules=rules)
+    with recorder.use_cassette('remove_export_rule'):
+        with server.with_vserver(ONTAP_VSERVER):
+            server.create_export_policy(policy_name=policy_name, rules=rules)
 
-    added_policy = policy_by_name(ontap_server.export_policies, policy_name)
+        added_policy = policy_by_name(server.export_policies, policy_name)
 
-    indices = [i for i, _r in added_policy.rules]
+        indices = [i for i, _r in added_policy.rules]
 
-    # remove rule #3
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.remove_export_rule(policy_name, index=indices[2])
+        # remove rule #3
+        with server.with_vserver(ONTAP_VSERVER):
+            server.remove_export_rule(policy_name, index=indices[2])
 
-    modified_policy = policy_by_name(ontap_server.export_policies, policy_name)
+        modified_policy = policy_by_name(server.export_policies, policy_name)
 
-    # Assert correct (updated) ordering
-    for idx, rule in enumerate(modified_policy.rules, start=1):
-        r_id, r = rule
-        assert r_id == idx
+        # Assert correct (updated) ordering
+        for idx, rule in enumerate(modified_policy.rules, start=1):
+            r_id, r = rule
+            assert r_id == idx
 
-    # Remove the third rule from the template set as well
-    del rules[2]
-    assert [r for _id, r in modified_policy.rules] == rules
+        # Remove the third rule from the template set as well
+        del rules[2]
+        assert [r for _id, r in modified_policy.rules] == rules
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.delete_export_policy(policy_name=policy_name)
+        with server.with_vserver(ONTAP_VSERVER):
+            server.delete_export_policy(policy_name=policy_name)
 
 
 @pytest.mark.xfail(reason="Requires license")
@@ -530,144 +539,185 @@ def test_rollback_from_snapshot(ontap_server):
 
 @pytest.mark.xfail(reason="Requires license")
 def test_clone_from_snapshot(ontap_server):
-    with ephermeral_volume(ontap_server) as volume_name:
-        snapshot_name = "test_snap"
-        clone_name = 'test_clone_{}'.format(run_id)
-        junction_path = "/test_clone_{}".format(run_id)
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.create_snapshot(volume_name,
-                                         snapshot_name=snapshot_name)
+    recorder, server = ontap_server
 
-            ontap_server.clone_volume(parent_volume_name=volume_name,
-                                      clone_name=clone_name,
-                                      junction_path=junction_path,
-                                      parent_snapshot=snapshot_name)
-            vol = list(ontap_server.volumes.filter(name=volume_name))[0]
-            clone = list(ontap_server.volumes.filter(name=clone_name))[0]
-            delete_volume(ontap_server, clone_name)
-            assert vol == clone
+    with recorder.use_cassette('clone_from_snapshot'):
+        with ephermeral_volume(server) as volume_name:
+            snapshot_name = "test_snap"
+            clone_name = 'test_clone_{}'.format(run_id)
+            junction_path = "/test_clone_{}".format(run_id)
+            with server.with_vserver(ONTAP_VSERVER):
+                server.create_snapshot(volume_name,
+                                       snapshot_name=snapshot_name)
+
+                server.clone_volume(parent_volume_name=volume_name,
+                                    clone_name=clone_name,
+                                    junction_path=junction_path,
+                                    parent_snapshot=snapshot_name)
+                vol = server.volumes.single(volume_name=volume_name)
+                clone = server.volumes.single(volume_name=clone_name)
+                delete_volume(server, clone_name)
+                assert vol == clone
 
 
 def test_ephermeral_volume(ontap_server):
-    with pytest.raises(Exception):
-        with ephermeral_volume(ontap_server) as vn:
-            assert vn in [v.name for v in ontap_server.volumes]
-            name = vn
-            raise Exception
+    recorder, server = ontap_server
+    with recorder.use_cassette('ephermeral_volume'):
+        with pytest.raises(Exception):
+            with ephermeral_volume(server) as vn:
+                assert vn in [v.name for v in server.volumes]
+                name = vn
+                raise Exception
 
-    assert name not in [v.name for v in ontap_server.volumes]
+        assert name not in [v.name for v in server.volumes]
 
 
 def test_set_autosize_enable(ontap_server):
     max_size_kb = 100 * 1000 * 1000
     increment_kb = 10000
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.set_volume_autosize(
-                volume_name=vn,
-                max_size_bytes=max_size_kb * 1000,
-                increment_bytes=increment_kb * 1000,
-                autosize_enabled=True)
-            vol = next(ontap_server.volumes.filter(name=vn))
-            assert vol.autosize_enabled
-            # Sometimes there is apparently some rounding
-            # But not a factor 10 too much, we can assume:
-            assert vol.autosize_increment >= increment_kb * 1000
-            assert vol.autosize_increment <= increment_kb * 1000 * 10
-            assert vol.max_autosize >= max_size_kb * 1000
-            assert vol.max_autosize <= max_size_kb * 1000 * 10
+    recorder, server = ontap_server
+
+    # This makes the same request repeatedly, it seems, so we need
+    # to record it in new_episodes mode.
+    with recorder.use_cassette('vol_autosize_enable',
+                               record='new_episodes'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.set_volume_autosize(
+                    volume_name=vn,
+                    max_size_bytes=max_size_kb * 1000,
+                    increment_bytes=increment_kb * 1000,
+                    autosize_enabled=True)
+                vol = server.volumes.single(volume_name=vn)
+                assert vol.autosize_enabled
+                # Sometimes there is apparently some rounding
+                # But not a factor 10 too much, we can assume:
+                assert vol.autosize_increment >= increment_kb * 1000
+                assert vol.autosize_increment <= increment_kb * 1000 * 10
+                assert vol.max_autosize >= max_size_kb * 1000
+                assert vol.max_autosize <= max_size_kb * 1000 * 10
 
 
 def test_set_autosize_disable(ontap_server):
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.set_volume_autosize(
-                volume_name=vn,
-                max_size_bytes=1,
-                increment_bytes=1,
-                autosize_enabled=False)
-            vol = next(ontap_server.volumes.filter(name=vn))
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('vol_autosize_disable'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.set_volume_autosize(
+                    volume_name=vn,
+                    max_size_bytes=1,
+                    increment_bytes=1,
+                    autosize_enabled=False)
+            vol = server.volumes.single(volume_name=vn)
             assert not vol.autosize_enabled
 
 
 def test_set_autosize_invalid_call(ontap_server):
-    with pytest.raises(TypeError):
-        ontap_server.set_volume_autosize(volume_name="bork",
-                                         autosize_enabled=True)
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('vol_autosize_invalid_call'):
+        with pytest.raises(TypeError):
+            server.set_volume_autosize(volume_name="bork",
+                                       autosize_enabled=True)
 
 
 def test_set_export_policy(ontap_server):
     policy_name = "test_policy_set_export_policy{}".format(run_id)
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.create_export_policy(policy_name=policy_name)
-            ontap_server.set_volume_export_policy(volume_name=vn,
-                                                  policy_name=policy_name)
-            vol = next(ontap_server.volumes.filter(name=vn))
-            assert vol.active_policy_name == policy_name
+    recorder, server = ontap_server
 
-    # Must be done after the volume is deleted:
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        ontap_server.delete_export_policy(policy_name)
+    with recorder.use_cassette('set_export_policy'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.create_export_policy(policy_name=policy_name)
+                server.set_volume_export_policy(volume_name=vn,
+                                                policy_name=policy_name)
+                vol = server.volumes.single(volume_name=vn)
+                assert vol.active_policy_name == policy_name
+
+        # Must be done after the volume is deleted:
+        with server.with_vserver(ONTAP_VSERVER):
+            server.delete_export_policy(policy_name)
 
 
 def test_delete_snapshot(ontap_server):
     snapshot_name = "test_snap"
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            ontap_server.create_snapshot(vn, snapshot_name=snapshot_name)
-            ontap_server.delete_snapshot(vn, snapshot_name=snapshot_name)
-        snapshots = list(ontap_server.snapshots_of(volume_name=vn))
-        assert snapshot_name not in snapshots
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('delete_snapshot'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.create_snapshot(vn, snapshot_name=snapshot_name)
+                server.delete_snapshot(vn, snapshot_name=snapshot_name)
+            assert snapshot_name not in server.snapshots_of(volume_name=vn)
 
 
 def test_get_vservers(ontap_server):
-    vservers = list(ontap_server.vservers)
-    assert vservers
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('list_vservers'):
+        vservers = list(server.vservers)
+        assert vservers
 
 
 def test_ontap_system_version(ontap_server):
-    assert ontap_server.ontap_system_version
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('ontap_system_version'):
+        assert server.ontap_system_version
 
 
 def test_destroy_nonexistent_volume(ontap_server):
     volume_name = run_id
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        with pytest.raises(netapp.api.APIError):
-            ontap_server.destroy_volume(volume_name=volume_name)
+    with recorder.use_cassette('destroy_nonexistent'):
+        with server.with_vserver(ONTAP_VSERVER):
+            with pytest.raises(netapp.api.APIError):
+                server.destroy_volume(volume_name=volume_name)
 
 
 def test_create_existent_volume(ontap_server):
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        with ephermeral_volume(ontap_server) as vn:
-            with pytest.raises(netapp.api.APIError):
-                new_volume(ontap_server, volume_name=vn)
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('ontap_create_existent'):
+        with server.with_vserver(ONTAP_VSERVER):
+            with ephermeral_volume(server) as vn:
+                with pytest.raises(netapp.api.APIError):
+                    new_volume(server, volume_name=vn)
 
 
 def test_offline_nonexistent_volume(ontap_server):
     volume_name = run_id
+    recorder, server = ontap_server
 
-    with ontap_server.with_vserver(ONTAP_VSERVER):
-        with pytest.raises(netapp.api.APIError):
-            ontap_server.take_volume_offline(volume_name=volume_name)
+    with recorder.use_cassette('offline_nonexistent'):
+        with server.with_vserver(ONTAP_VSERVER):
+            with pytest.raises(netapp.api.APIError):
+                server.take_volume_offline(volume_name=volume_name)
 
 
 def test_set_nonexistent_export_policy(ontap_server):
     policy_name = "test_policy_nonexistent_export_policy{}".format(run_id)
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            with pytest.raises(netapp.api.APIError):
-                ontap_server.set_volume_export_policy(volume_name=vn,
-                                                      policy_name=policy_name)
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('set_nonexistent_export_policy'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                with pytest.raises(netapp.api.APIError):
+                    server.set_volume_export_policy(volume_name=vn,
+                                                    policy_name=policy_name)
 
 
 def test_break_locks_nonexistent(ontap_server):
-    with ephermeral_volume(ontap_server) as vn:
-        with ontap_server.with_vserver(ONTAP_VSERVER):
-            with pytest.raises(netapp.api.APIError):
-                ontap_server.break_lock(volume_name=vn,
-                                        client_address="made-up-client")
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('ontap_break_nonexistent_locks'):
+        with ephermeral_volume(server) as vn:
+            with server.with_vserver(ONTAP_VSERVER):
+                with pytest.raises(netapp.api.APIError):
+                    server.break_lock(volume_name=vn,
+                                      client_address="made-up-client")
 
 
 def test_volume_read_compression_status(ontap_server):
