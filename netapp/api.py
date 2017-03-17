@@ -906,15 +906,17 @@ class Server(object):
         If vserver is none or the empty string, switch to cluster mode.
         """
         old_vfiler = self.vfiler
+        log.debug("Temporarily setting vfiler to {}".format(vserver))
         self.vfiler = vserver
         yield
+        log.debug("Restoring vfiler to {}".format(old_vfiler))
         self.vfiler = old_vfiler
 
     def destroy_volume(self, volume_name):
         """
         Permamently delete a volume. Must be offline.
         """
-
+        log.info("Deleting volume {}".format(volume_name))
         result = self.perform_call(X('volume-destroy',
                                      X('name', volume_name)),
                                    self.ontap_api_url)
