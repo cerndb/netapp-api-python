@@ -579,8 +579,7 @@ def test_set_autosize_enable(ontap_server):
 
     # This makes the same request repeatedly, it seems, so we need
     # to record it in new_episodes mode.
-    with recorder.use_cassette('vol_autosize_enable',
-                               record='new_episodes'):
+    with recorder.use_cassette('vol_autosize_enable'):
         with ephermeral_volume(server) as vn:
             with server.with_vserver(ONTAP_VSERVER):
                 server.set_volume_autosize(
