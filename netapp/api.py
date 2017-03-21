@@ -115,7 +115,7 @@ def _child_get_int(parent, *string_hierarchy):
 
     try:
         return int(_child_get_string(parent, *string_hierarchy))
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -136,11 +136,10 @@ def _child_get_strings(parent, *string_hierarchy):
     """
     string_name = "/a:".join(string_hierarchy)
 
-    xpath_query = 'a:%s/text()' % string_name
-
-    matches = parent.xpath(xpath_query,
-                           namespaces={'a': XMLNS})
-    return matches
+    query = 'a:%s' % string_name
+    matches = parent.findall(query,
+                             namespaces={'a': XMLNS})
+    return [m.text for m in matches]
 
 
 def _child_get_string(parent, *string_hierarchy):
@@ -155,10 +154,9 @@ def _child_get_string(parent, *string_hierarchy):
 
     This function strictly assumes either 1 or 0 matches (empty string)
     """
-    matches = _child_get_strings(parent, *string_hierarchy)
-    assert len(matches) < 2, "Should only match at most one string value!"
-
-    return matches[0] if matches else ""
+    target = "/a:".join(string_hierarchy)
+    return parent.findtext("a:{}".format(target),
+                           namespaces={'a': XMLNS})
 
 
 def _child_get_kv_dict(parent, string_name):
@@ -1323,8 +1321,14 @@ class Volume(object):
         creation_timestamp = _child_get_int(raw_object,
                                             'volume-id-attributes',
                                             'creation-time')
-        self.creation_time = datetime.fromtimestamp(creation_timestamp,
-                                                    pytz.timezone(LOCAL_TIMEZONE))
+        try:
+            self.creation_time = datetime.fromtimestamp(
+                creation_timestamp,
+                pytz.timezone(LOCAL_TIMEZONE))
+        except TypeError:
+            log.info("Volume {} had no valid creation time!"
+                     .format(self.name))
+            self.creation_time = None
 
     def __str__(self):
         return str("Volume{}".format(self.__dict__))
