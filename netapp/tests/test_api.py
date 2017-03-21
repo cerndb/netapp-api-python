@@ -351,6 +351,9 @@ def test_create_destroy_volume(ontap_server):
             assert vol.containing_aggregate_name == aggregate_name
             assert vol.owning_vserver_name == ONTAP_VSERVER
             assert vol.size_total_bytes == size_mb * 1000 * 1000
+            assert vol.percentage_snapshot_reserve == 0
+            assert vol.percentage_snapshot_reserve_used == 0
+
 
             delete_volume(server, volume_name)
 
@@ -779,3 +782,28 @@ def test_volume_has_ctime(ontap_server):
             now = datetime.now(tz=pytz.timezone(netapp.api.LOCAL_TIMEZONE))
             assert vol.creation_time <= now
             # Due to recorded data, we cannot reliably give a relative lower bound.
+
+
+def test_create_different_snapshot_space(ontap_server):
+    recorder, server = ontap_server
+    vol_name = 'test_snapshotspace_volume'
+
+    for aggr in server.aggregates:
+        if not re.match("^aggr0.*", aggr.name):
+            aggregate_name = aggr.name
+            break
+
+    with recorder.use_cassette('create_volume_with_snapshot_space'):
+        try:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.create_volume(name=vol_name,
+                                     size_bytes=100000000,
+                                     aggregate_name=aggregate_name,
+                                     junction_path="/{}".format(vol_name),
+                                     percentage_snapshot_reserve=20)
+
+                vol = server.volumes.single(volume_name=vol_name)
+                assert vol.percentage_snapshot_reserve == 20
+
+        finally:
+            delete_volume(server, vol_name)

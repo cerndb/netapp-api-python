@@ -80,7 +80,9 @@ VOL_FIELDS = [X('volume-id-attributes',
                    'node', 'owning-vserver-name',
                    'creation-time']]),
               X('volume-space-attributes',
-                *[X(x) for x in ['size-total', 'size-used']]),
+                *[X(x) for x in ['size-total', 'size-used',
+                                 'percentage-snapshot-reserve',
+                                 'percentage-snapshot-reserve-used']]),
               X('volume-autosize-attributes',
                 *[X(x) for x in ['is-enabled', 'maximum-size',
                                  'increment-size']]),
@@ -1329,6 +1331,16 @@ class Volume(object):
             log.info("Volume {} had no valid creation time!"
                      .format(self.name))
             self.creation_time = None
+
+        self.percentage_snapshot_reserve = _child_get_int(
+            raw_object,
+            'volume-space-attributes',
+            'percentage-snapshot-reserve')
+
+        self.percentage_snapshot_reserve_used = _child_get_int(
+            raw_object,
+            'volume-space-attributes',
+            'percentage-snapshot-reserve-used')
 
     def __str__(self):
         return str("Volume{}".format(self.__dict__))
