@@ -77,7 +77,8 @@ VOL_FIELDS = [X('volume-id-attributes',
                 *[X(x) for x in
                   ['name', 'uuid', 'junction-path',
                    'containing-aggregate-name',
-                   'node', 'owning-vserver-name']]),
+                   'node', 'owning-vserver-name',
+                   'creation-time']]),
               X('volume-space-attributes',
                 *[X(x) for x in ['size-total', 'size-used']]),
               X('volume-autosize-attributes',
@@ -1319,6 +1320,11 @@ class Volume(object):
         self.owning_vserver_name = _child_get_string(raw_object,
                                                      'volume-id-attributes',
                                                      'owning-vserver-name')
+        creation_timestamp = _child_get_int(raw_object,
+                                            'volume-id-attributes',
+                                            'creation-time')
+        self.creation_time = datetime.fromtimestamp(creation_timestamp,
+                                                    pytz.timezone(LOCAL_TIMEZONE))
 
     def __str__(self):
         return str("Volume{}".format(self.__dict__))

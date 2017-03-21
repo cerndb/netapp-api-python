@@ -13,6 +13,7 @@ from itertools import islice
 
 import pytest
 import betamax
+import pytz
 
 
 log = logging.getLogger(__name__)
@@ -765,3 +766,16 @@ def test_volume_compression_disable(ontap_server):
 
                 server.set_compression(volume_name, enabled=False,
                                        inline=False)
+
+
+def test_volume_has_ctime(ontap_server):
+
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('volume_has_ctime'):
+        with ephermeral_volume(server) as volume_name:
+            vol = server.volumes.single(volume_name=volume_name)
+            assert hasattr(vol, 'creation_time')
+            now = datetime.now(tz=pytz.timezone(netapp.api.LOCAL_TIMEZONE))
+            assert vol.creation_time <= now
+            # Due to recorded data, we cannot reliably give a relative lower bound.
