@@ -789,12 +789,12 @@ def test_create_different_snapshot_space(ontap_server):
     recorder, server = ontap_server
     vol_name = 'test_snapshotspace_volume'
 
-    for aggr in server.aggregates:
-        if not re.match("^aggr0.*", aggr.name):
-            aggregate_name = aggr.name
-            break
-
     with recorder.use_cassette('create_volume_with_snapshot_space'):
+        for aggr in server.aggregates:
+            if not re.match("^aggr0.*", aggr.name):
+                aggregate_name = aggr.name
+                break
+
         try:
             with server.with_vserver(ONTAP_VSERVER):
                 server.create_volume(name=vol_name,
