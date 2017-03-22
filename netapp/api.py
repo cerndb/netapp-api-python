@@ -782,6 +782,25 @@ class Server(object):
 
         self.raise_on_non_single_answer(result)
 
+    def set_volume_snapshot_reserve(self, volume_name, reserve_percent):
+        """
+        Set a volume's reserved snapshot space (in percent).
+        """
+
+        result = self.perform_call(X('volume-modify-iter',
+                                     X('attributes',
+                                       X('volume-attributes',
+                                         X('volume-space-attributes',
+                                           X('percentage-snapshot-reserve',
+                                             str(reserve_percent))))),
+                                     X('query',
+                                       X('volume-attributes',
+                                         X('volume-id-attributes',
+                                           X('name', volume_name))))),
+                                   self.ontap_api_url)
+
+        self.raise_on_non_single_answer(result)
+
     @property
     def aggregates(self):
         """

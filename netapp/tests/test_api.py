@@ -781,7 +781,8 @@ def test_volume_has_ctime(ontap_server):
             assert hasattr(vol, 'creation_time')
             now = datetime.now(tz=pytz.timezone(netapp.api.LOCAL_TIMEZONE))
             assert vol.creation_time <= now
-            # Due to recorded data, we cannot reliably give a relative lower bound.
+            # Due to recorded data, we cannot reliably give a relative lower
+            # bound.
 
 
 def test_create_different_snapshot_space(ontap_server):
@@ -807,3 +808,15 @@ def test_create_different_snapshot_space(ontap_server):
 
         finally:
             delete_volume(server, vol_name)
+
+
+def test_set_snapshot_reserve(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('set_snapshot_reserve'):
+        with ephermeral_volume(server) as volume_name:
+            with server.with_vserver(ONTAP_VSERVER):
+                server.set_volume_snapshot_reserve(volume_name=volume_name,
+                                                   reserve_percent=37)
+            vol = server.volumes.single(volume_name=volume_name)
+            assert vol.percentage_snapshot_reserve == 37
