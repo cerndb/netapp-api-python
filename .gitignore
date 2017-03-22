@@ -6,3 +6,5 @@
 /.coverage
 /deploy_github_netapp
 *.egg-info
+/prof
+/.env.anti
