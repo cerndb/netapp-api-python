@@ -19,7 +19,8 @@ def list_volumes(s, vserver, args):
         if not include.match(vol.name):
             continue
         if vol.node_name and vol.junction_path:
-            print("{}:{}".format(vol.node_name, vol.junction_path))
+            print("{}:{} ({})".format(vol.node_name,
+                                      vol.junction_path, vol.name))
         else:
             print("Not mounted: {}".format(vol.name))
 

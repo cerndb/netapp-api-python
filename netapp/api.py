@@ -334,9 +334,7 @@ class Server(object):
                 volumes = list(self.filter(name=volume_name, vserver=vserver))
             else:
                 volumes = list(self.filter(name=volume_name))
-            assert len(volumes) == 1
             return volumes[0]
-
 
         def make_volume(self, attributes_list):
             name = _child_get_string(attributes_list,
@@ -1022,6 +1020,17 @@ class Server(object):
                 raise e
 
         self.perform_call(sis_set_config_call, self.ontap_api_url)
+
+    def resize_volume(self, volume_name, new_size):
+        """
+        Resize the volume. Size follows the same conventions as for
+        create_volume.
+        """
+        resize_call = X('volume-size',
+                        X('volume', volume_name),
+                        X('new-size', str(new_size)))
+
+        self.perform_call(resize_call, self.ontap_api_url)
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
