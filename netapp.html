@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Source Documentation &mdash; netapp-api 0.8.0 documentation</title>
+  <title>Source Documentation &mdash; netapp-api 0.9.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="netapp-api 0.8.0 documentation" href="index.html"/>
+    <link rel="top" title="netapp-api 0.9.0 documentation" href="index.html"/>
         <link rel="prev" title="About" href="README.html"/> 
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.8.0
+                0.9.0
               </div>
             
           
@@ -150,7 +150,7 @@
 <dl class="exception">
 <dt id="netapp.api.APIError">
 <em class="property">exception </em><code class="descclassname">netapp.api.</code><code class="descname">APIError</code><span class="sig-paren">(</span><em>message=''</em>, <em>errno='{no error #}'</em>, <em>failing_query=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#APIError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.APIError" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">Exception</span></code></p>
 <p>An Exception logging an api-related error and its context. Note that
 an APIError typically occurs <em>after</em> a successful transfer of a
 command to the API itself.</p>
@@ -455,6 +455,17 @@ each fetch operation. Pagination and incremental fetch will
 be done automatically under the hood.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="netapp.api.Server.VolumeList.make_volume">
+<code class="descname">make_volume</code><span class="sig-paren">(</span><em>attributes_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.VolumeList.make_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.VolumeList.make_volume" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.VolumeList.single">
+<code class="descname">single</code><span class="sig-paren">(</span><em>volume_name</em>, <em>vserver=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.VolumeList.single"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.VolumeList.single" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a single volume, raising a IndexError if no volume matched.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="method">
@@ -534,7 +545,7 @@ rules rules (otherwise, use whatever is default).</p>
 
 <dl class="method">
 <dt id="netapp.api.Server.create_volume">
-<code class="descclassname">Server.</code><code class="descname">create_volume</code><span class="sig-paren">(</span><em>name</em>, <em>size_bytes</em>, <em>aggregate_name</em>, <em>junction_path</em>, <em>export_policy_name=None</em>, <em>percentage_snapshot_reserve=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.create_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.create_volume" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">Server.</code><code class="descname">create_volume</code><span class="sig-paren">(</span><em>name</em>, <em>size_bytes</em>, <em>aggregate_name</em>, <em>junction_path</em>, <em>export_policy_name=None</em>, <em>percentage_snapshot_reserve=0</em>, <em>compression=True</em>, <em>inline_compression=True</em>, <em>caching_policy=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.create_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.create_volume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new volume on the NetApp cluster</p>
 <p>size_bytes is assumed to be in bytes, but if given as a string
 with a suffix (&#8220;k&#8221;, &#8220;m&#8221;, &#8220;g&#8221; or &#8220;t&#8221; for kilobytes, megabytes,
@@ -657,6 +668,13 @@ following indices (e.g. decrement by one).</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="netapp.api.Server.resize_volume">
+<code class="descclassname">Server.</code><code class="descname">resize_volume</code><span class="sig-paren">(</span><em>volume_name</em>, <em>new_size</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.resize_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.resize_volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resize the volume. Size follows the same conventions as for
+create_volume.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="netapp.api.Server.restrict_volume">
 <code class="descclassname">Server.</code><code class="descname">restrict_volume</code><span class="sig-paren">(</span><em>volume_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.restrict_volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.restrict_volume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unmount and restrict a volume.</p>
@@ -669,15 +687,35 @@ following indices (e.g. decrement by one).</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="netapp.api.Server.set_compression">
+<code class="descclassname">Server.</code><code class="descname">set_compression</code><span class="sig-paren">(</span><em>volume_name</em>, <em>enabled=True</em>, <em>inline=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.set_compression"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.set_compression" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="netapp.api.Server.set_volume_autosize">
 <code class="descclassname">Server.</code><code class="descname">set_volume_autosize</code><span class="sig-paren">(</span><em>volume_name</em>, <em>autosize_enabled</em>, <em>max_size_bytes=None</em>, <em>increment_bytes=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.set_volume_autosize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.set_volume_autosize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the autosize properties of volume_name.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="netapp.api.Server.set_volume_caching_policy">
+<code class="descclassname">Server.</code><code class="descname">set_volume_caching_policy</code><span class="sig-paren">(</span><em>volume_name</em>, <em>policy_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.set_volume_caching_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.set_volume_caching_policy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a volume&#8217;s caching policy. Note that this is _different_
+from flexcache policies. The NetApp manual is not exactly clear
+on this, but this is the same attribute as cache-policy when
+creating volumes.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="netapp.api.Server.set_volume_export_policy">
 <code class="descclassname">Server.</code><code class="descname">set_volume_export_policy</code><span class="sig-paren">(</span><em>volume_name</em>, <em>policy_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.set_volume_export_policy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.set_volume_export_policy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set the export policy of a given volume</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="netapp.api.Server.set_volume_snapshot_reserve">
+<code class="descclassname">Server.</code><code class="descname">set_volume_snapshot_reserve</code><span class="sig-paren">(</span><em>volume_name</em>, <em>reserve_percent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.set_volume_snapshot_reserve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.set_volume_snapshot_reserve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a volume&#8217;s reserved snapshot space (in percent).</p>
 </dd></dl>
 
 <dl class="method">
@@ -709,6 +747,12 @@ similar!</p>
 <dd><p>Unmount a volume</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="netapp.api.Server.volume_modify_iter">
+<code class="descclassname">Server.</code><code class="descname">volume_modify_iter</code><span class="sig-paren">(</span><em>volume_name</em>, <em>*attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.volume_modify_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.volume_modify_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a call to volume-modify-iter with the provided attributes.</p>
+</dd></dl>
+
 <dl class="attribute">
 <dt id="netapp.api.Server.volumes">
 <code class="descclassname">Server.</code><code class="descname">volumes</code><a class="headerlink" href="#netapp.api.Server.volumes" title="Permalink to this definition">¶</a></dt>
@@ -723,7 +767,7 @@ similar!</p>
 
 <dl class="method">
 <dt id="netapp.api.Server.with_vserver">
-<code class="descclassname">Server.</code><code class="descname">with_vserver</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.with_vserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.with_vserver" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">Server.</code><code class="descname">with_vserver</code><span class="sig-paren">(</span><em>vserver</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.with_vserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.with_vserver" title="Permalink to this definition">¶</a></dt>
 <dd><p>A Context to temporarily set the vserver/vfiler (it&#8217;s the same
 thing) during a set of operations, and then reset it to cluster
 mode (or whatever vserver it was configured to use previously)
@@ -747,13 +791,13 @@ again.</p>
 
 <dl class="class">
 <dt id="netapp.api.Volume">
-<em class="property">class </em><code class="descclassname">netapp.api.</code><code class="descname">Volume</code><span class="sig-paren">(</span><em>raw_object</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">netapp.api.</code><code class="descname">Volume</code><span class="sig-paren">(</span><em>raw_object</em>, <em>compression</em>, <em>inline</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>A volume in the NetApp storage system.</p>
 <p>Do not roll your own.</p>
 <dl class="method">
 <dt id="netapp.api.Volume.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>raw_object</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>raw_object</em>, <em>compression</em>, <em>inline</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Volume.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Volume.__init__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -880,7 +924,7 @@ minimum to avoid confusion in the event of API changes.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.netapp">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'netapp')</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
 <dd><p>The root element for any query.</p>
 </dd></dl>
 
@@ -898,7 +942,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.source">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'source')</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resource or group.</p>
 </dd></dl>
 
@@ -910,7 +954,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.tag">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'tag')</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
 <dd><p>The tag from the last call, if processing paginated data.</p>
 </dd></dl>
 
@@ -931,7 +975,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.timeout">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'timeout')</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>The timeout for an operation: <code class="docutils literal"><span class="pre">&lt;timeout&gt;x&lt;/timeout&gt;</span></code>.</p>
 </dd></dl>
 
@@ -977,7 +1021,7 @@ status.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.8.0',
+            VERSION:'0.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

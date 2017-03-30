@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>netapp.api &mdash; netapp-api 0.8.0 documentation</title>
+  <title>netapp.api &mdash; netapp-api 0.9.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="netapp-api 0.8.0 documentation" href="../../index.html"/>
+    <link rel="top" title="netapp-api 0.9.0 documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.8.0
+                0.9.0
               </div>
             
           
@@ -215,14 +215,18 @@
                 <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>
                   <span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="s1">&#39;junction-path&#39;</span><span class="p">,</span>
                    <span class="s1">&#39;containing-aggregate-name&#39;</span><span class="p">,</span>
-                   <span class="s1">&#39;node&#39;</span><span class="p">,</span> <span class="s1">&#39;owning-vserver-name&#39;</span><span class="p">]]),</span>
+                   <span class="s1">&#39;node&#39;</span><span class="p">,</span> <span class="s1">&#39;owning-vserver-name&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;creation-time&#39;</span><span class="p">]]),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
-                <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;size-total&#39;</span><span class="p">,</span> <span class="s1">&#39;size-used&#39;</span><span class="p">]]),</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;size-total&#39;</span><span class="p">,</span> <span class="s1">&#39;size-used&#39;</span><span class="p">,</span>
+                                 <span class="s1">&#39;percentage-snapshot-reserve&#39;</span><span class="p">,</span>
+                                 <span class="s1">&#39;percentage-snapshot-reserve-used&#39;</span><span class="p">]]),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-autosize-attributes&#39;</span><span class="p">,</span>
                 <span class="o">*</span><span class="p">[</span><span class="n">X</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;is-enabled&#39;</span><span class="p">,</span> <span class="s1">&#39;maximum-size&#39;</span><span class="p">,</span>
                                  <span class="s1">&#39;increment-size&#39;</span><span class="p">]]),</span>
               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;state&#39;</span><span class="p">)),</span>
-              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">))]</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">)),</span>
+              <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-hybrid-cache-attributes&#39;</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;caching-policy&#39;</span><span class="p">))]</span>
 
 
 <span class="k">def</span> <span class="nf">_read_bool</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
@@ -252,7 +256,7 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">string_hierarchy</span><span class="p">))</span>
-    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">None</span>
 
 
@@ -273,11 +277,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">string_name</span> <span class="o">=</span> <span class="s2">&quot;/a:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">string_hierarchy</span><span class="p">)</span>
 
-    <span class="n">xpath_query</span> <span class="o">=</span> <span class="s1">&#39;a:</span><span class="si">%s</span><span class="s1">/text()&#39;</span> <span class="o">%</span> <span class="n">string_name</span>
-
-    <span class="n">matches</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath_query</span><span class="p">,</span>
-                           <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})</span>
-    <span class="k">return</span> <span class="n">matches</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="s1">&#39;a:</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">string_name</span>
+    <span class="n">matches</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">query</span><span class="p">,</span>
+                             <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">]</span>
 
 
 <span class="k">def</span> <span class="nf">_child_get_string</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">string_hierarchy</span><span class="p">):</span>
@@ -292,10 +295,9 @@
 
 <span class="sd">    This function strictly assumes either 1 or 0 matches (empty string)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">matches</span> <span class="o">=</span> <span class="n">_child_get_strings</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="o">*</span><span class="n">string_hierarchy</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Should only match at most one string value!&quot;</span>
-
-    <span class="k">return</span> <span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">matches</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="s2">&quot;/a:&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">string_hierarchy</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parent</span><span class="o">.</span><span class="n">findtext</span><span class="p">(</span><span class="s2">&quot;a:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">target</span><span class="p">),</span>
+                           <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})</span>
 
 
 <span class="k">def</span> <span class="nf">_child_get_kv_dict</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">string_name</span><span class="p">):</span>
@@ -463,6 +465,67 @@
             <span class="c1"># Applying an empty filter &lt;==&gt; get everything</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
 
+<div class="viewcode-block" id="Server.VolumeList.single"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList.single">[docs]</a>        <span class="k">def</span> <span class="nf">single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">vserver</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Return a single volume, raising a IndexError if no volume matched.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">vserver</span><span class="p">:</span>
+                <span class="n">volumes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">volume_name</span><span class="p">,</span> <span class="n">vserver</span><span class="o">=</span><span class="n">vserver</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">volumes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">volume_name</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">volumes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Server.VolumeList.make_volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList.make_volume">[docs]</a>        <span class="k">def</span> <span class="nf">make_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attributes_list</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">attributes_list</span><span class="p">,</span>
+                                     <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                     <span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="n">vserver</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">attributes_list</span><span class="p">,</span>
+                                        <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                        <span class="s1">&#39;owning-vserver-name&#39;</span><span class="p">)</span>
+
+            <span class="n">sis_path</span> <span class="o">=</span> <span class="s2">&quot;/vol/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">sis_api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;sis-get-iter&#39;</span><span class="p">,</span>
+                             <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;sis-status-info&#39;</span><span class="p">,</span>
+                                 <span class="n">X</span><span class="p">(</span><span class="s1">&#39;is-compression-enabled&#39;</span><span class="p">),</span>
+                                 <span class="n">X</span><span class="p">(</span><span class="s1">&#39;is-inline-compression-enabled&#39;</span><span class="p">))),</span>
+                             <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;sis-status-info&#39;</span><span class="p">,</span>
+                                 <span class="n">X</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="n">sis_path</span><span class="p">),</span>
+                                 <span class="n">X</span><span class="p">(</span><span class="s1">&#39;vserver&#39;</span><span class="p">,</span> <span class="n">vserver</span><span class="p">))))</span>
+
+            <span class="k">def</span> <span class="nf">extract_compression</span><span class="p">(</span><span class="n">attributes_list</span><span class="p">):</span>
+                <span class="n">compression_enabled</span> <span class="o">=</span> <span class="n">_read_bool</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+                    <span class="n">attributes_list</span><span class="p">,</span>
+                    <span class="s1">&#39;is-compression-enabled&#39;</span><span class="p">))</span>
+
+                <span class="n">inline_enabled</span> <span class="o">=</span> <span class="n">_read_bool</span><span class="p">(</span><span class="n">_child_get_string</span><span class="p">(</span>
+                    <span class="n">attributes_list</span><span class="p">,</span>
+                    <span class="s1">&#39;is-inline-compression-enabled&#39;</span><span class="p">))</span>
+
+                <span class="k">return</span> <span class="n">compression_enabled</span><span class="p">,</span> <span class="n">inline_enabled</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span>
+                <span class="n">api_call</span><span class="o">=</span><span class="n">sis_api_call</span><span class="p">,</span>
+                <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                <span class="n">constructor</span><span class="o">=</span><span class="n">extract_compression</span><span class="p">,</span>
+                <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">compression</span><span class="p">,</span> <span class="n">inline</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="c1"># If we didn&#39;t get any hits, it meant the entire SIS</span>
+                <span class="c1"># subsystem was disabled, and thus compression *cannot*</span>
+                <span class="c1"># be enabled.</span>
+                <span class="c1">#</span>
+                <span class="c1"># This is not documented anywhere.</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SIS was disabled for volume </span><span class="si">{}</span><span class="s2">. Compression = off&quot;</span>
+                         <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+                <span class="n">compression</span><span class="p">,</span> <span class="n">inline</span> <span class="o">=</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">Volume</span><span class="p">(</span><span class="n">attributes_list</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="n">compression</span><span class="p">,</span>
+                          <span class="n">inline</span><span class="o">=</span><span class="n">inline</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Server.VolumeList.filter"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.VolumeList.filter">[docs]</a>        <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_records</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">query</span><span class="p">):</span>
             <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            Usage:</span>
@@ -501,7 +564,7 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span>
                 <span class="n">api_call</span><span class="p">,</span>
                 <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
-                <span class="n">constructor</span><span class="o">=</span><span class="n">Volume</span><span class="p">,</span>
+                <span class="n">constructor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_volume</span><span class="p">,</span>
                 <span class="n">container_tag</span><span class="o">=</span><span class="s2">&quot;attributes-list&quot;</span><span class="p">)</span></div></div>
 
 <div class="viewcode-block" id="Server.ExportPolicy"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.ExportPolicy">[docs]</a>    <span class="k">class</span> <span class="nc">ExportPolicy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -637,7 +700,10 @@
 
 <div class="viewcode-block" id="Server.create_volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.create_volume">[docs]</a>    <span class="k">def</span> <span class="nf">create_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">size_bytes</span><span class="p">,</span> <span class="n">aggregate_name</span><span class="p">,</span>
                       <span class="n">junction_path</span><span class="p">,</span> <span class="n">export_policy_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                      <span class="n">percentage_snapshot_reserve</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+                      <span class="n">percentage_snapshot_reserve</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">compression</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">inline_compression</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">caching_policy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a new volume on the NetApp cluster</span>
 
@@ -656,7 +722,13 @@
         <span class="k">if</span> <span class="n">export_policy_name</span><span class="p">:</span>
             <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;export-policy&#39;</span><span class="p">,</span> <span class="n">export_policy_name</span><span class="p">))</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="n">caching_policy</span><span class="p">:</span>
+            <span class="n">api_call</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;caching-policy&#39;</span><span class="p">,</span> <span class="n">caching_policy</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_compression</span><span class="p">(</span><span class="n">volume_name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">enabled</span><span class="o">=</span><span class="n">compression</span><span class="p">,</span>
+                             <span class="n">inline</span><span class="o">=</span><span class="n">inline_compression</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Server.create_snapshot"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.create_snapshot">[docs]</a>    <span class="k">def</span> <span class="nf">create_snapshot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">snapshot_name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -838,18 +910,23 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the export policy of a given volume</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-modify-iter&#39;</span><span class="p">,</span>
-                                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;attributes&#39;</span><span class="p">,</span>
-                                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
-                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span>
-                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">)))),</span>
-                                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
-                                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
-                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
-                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">))))),</span>
-                                   <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume_modify_iter</span><span class="p">(</span><span class="n">volume_name</span><span class="p">,</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;attributes&#39;</span><span class="p">,</span>
+                                  <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                                    <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-export-attributes&#39;</span><span class="p">,</span>
+                                      <span class="n">X</span><span class="p">(</span><span class="s1">&#39;policy&#39;</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">)))))</span></div>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">raise_on_non_single_answer</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Server.set_volume_snapshot_reserve"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.set_volume_snapshot_reserve">[docs]</a>    <span class="k">def</span> <span class="nf">set_volume_snapshot_reserve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">reserve_percent</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a volume&#39;s reserved snapshot space (in percent).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume_modify_iter</span><span class="p">(</span><span class="n">volume_name</span><span class="p">,</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;attributes&#39;</span><span class="p">,</span>
+                                  <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                                    <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+                                      <span class="n">X</span><span class="p">(</span><span class="s1">&#39;percentage-snapshot-reserve&#39;</span><span class="p">,</span>
+                                        <span class="nb">str</span><span class="p">(</span><span class="n">reserve_percent</span><span class="p">))))))</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">aggregates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -976,15 +1053,17 @@
 <span class="sd">        If vserver is none or the empty string, switch to cluster mode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">old_vfiler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vfiler</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Temporarily setting vfiler to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">vserver</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vfiler</span> <span class="o">=</span> <span class="n">vserver</span>
         <span class="k">yield</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Restoring vfiler to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">old_vfiler</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vfiler</span> <span class="o">=</span> <span class="n">old_vfiler</span></div>
 
 <div class="viewcode-block" id="Server.destroy_volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.destroy_volume">[docs]</a>    <span class="k">def</span> <span class="nf">destroy_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Permamently delete a volume. Must be offline.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Deleting volume </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">volume_name</span><span class="p">))</span>
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-destroy&#39;</span><span class="p">,</span>
                                      <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">)),</span>
                                    <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
@@ -1000,17 +1079,9 @@
 <span class="sd">        sure you are on the correct vserver using with_vserver() or</span>
 <span class="sd">        similar!</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-modify-iter&#39;</span><span class="p">,</span>
-                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;attributes&#39;</span><span class="p">,</span>
-                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
-                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span>
-                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;state&#39;</span><span class="p">,</span> <span class="s1">&#39;offline&#39;</span><span class="p">)))),</span>
-                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
-                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
-                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
-                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">)))))</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">raise_on_non_single_answer</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume_modify_iter</span><span class="p">(</span><span class="n">volume_name</span><span class="p">,</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                                               <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-state-attributes&#39;</span><span class="p">,</span>
+                                                 <span class="n">X</span><span class="p">(</span><span class="s1">&#39;state&#39;</span><span class="p">,</span> <span class="s1">&#39;offline&#39;</span><span class="p">))))</span></div>
 
 <div class="viewcode-block" id="Server.extract_failures"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.extract_failures">[docs]</a>    <span class="k">def</span> <span class="nf">extract_failures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1043,6 +1114,71 @@
             <span class="k">raise</span> <span class="n">APIError</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Unexpected answer: got&quot;</span>
                                     <span class="s2">&quot; </span><span class="si">{}</span><span class="s2"> results, </span><span class="si">{}</span><span class="s2"> failures!&quot;</span>
                                     <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num_successes</span><span class="p">,</span> <span class="n">num_failures</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="Server.set_compression"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.set_compression">[docs]</a>    <span class="k">def</span> <span class="nf">set_compression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">ERR_ALREADY_ENABLED</span> <span class="o">=</span> <span class="mi">13001</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">enabled</span> <span class="ow">and</span> <span class="n">inline</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inline compression cannot be enabled alone!&quot;</span><span class="p">)</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;/vol/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">volume_name</span><span class="p">)</span>
+
+        <span class="n">sis_enable_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;sis-enable&#39;</span><span class="p">,</span>
+                            <span class="n">X</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">))</span>
+        <span class="n">sis_set_config_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;sis-set-config&#39;</span><span class="p">,</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;enable-compression&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">enabled</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()),</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;enable-inline-compression&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">inline</span><span class="p">)</span>
+                                                                <span class="o">.</span><span class="n">lower</span><span class="p">())),</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">sis_enable_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">APIError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">ERR_ALREADY_ENABLED</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SIS already enabled for </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">volume_name</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">sis_set_config_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Server.resize_volume"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.resize_volume">[docs]</a>    <span class="k">def</span> <span class="nf">resize_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">new_size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resize the volume. Size follows the same conventions as for</span>
+<span class="sd">        create_volume.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">resize_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-size&#39;</span><span class="p">,</span>
+                        <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">),</span>
+                        <span class="n">X</span><span class="p">(</span><span class="s1">&#39;new-size&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_size</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">resize_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Server.volume_modify_iter"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.volume_modify_iter">[docs]</a>    <span class="k">def</span> <span class="nf">volume_modify_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a call to volume-modify-iter with the provided attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-modify-iter&#39;</span><span class="p">,</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;attributes&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">),</span>
+                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">)))))</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">perform_call</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ontap_api_url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raise_on_non_single_answer</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="Server.set_volume_caching_policy"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.set_volume_caching_policy">[docs]</a>    <span class="k">def</span> <span class="nf">set_volume_caching_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_name</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a volume&#39;s caching policy. Note that this is _different_</span>
+<span class="sd">        from flexcache policies. The NetApp manual is not exactly clear</span>
+<span class="sd">        on this, but this is the same attribute as cache-policy when</span>
+<span class="sd">        creating volumes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">volume_modify_iter</span><span class="p">(</span><span class="n">volume_name</span><span class="p">,</span>
+                                <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-attributes&#39;</span><span class="p">,</span>
+                                  <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume-hybrid-cache-attributes&#39;</span><span class="p">,</span>
+                                    <span class="n">X</span><span class="p">(</span><span class="s1">&#39;caching-policy&#39;</span><span class="p">,</span> <span class="n">policy_name</span><span class="p">))))</span></div>
 
 <div class="viewcode-block" id="Server.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">443</span><span class="p">,</span>
                  <span class="n">transport_type</span><span class="o">=</span><span class="s2">&quot;HTTPS&quot;</span><span class="p">,</span> <span class="n">server_type</span><span class="o">=</span><span class="s2">&quot;OCUM&quot;</span><span class="p">,</span>
@@ -1210,8 +1346,8 @@
             <span class="n">reason</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;/a:netapp/a:results/@reason&#39;</span><span class="p">,</span>
                                     <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
 
-            <span class="n">errno</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;/a:netapp/a:results/@errno&#39;</span><span class="p">,</span>
-                                   <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">errno</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="s1">&#39;/a:netapp/a:results/@errno&#39;</span><span class="p">,</span>
+                                       <span class="n">namespaces</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">XMLNS</span><span class="p">})[</span><span class="mi">0</span><span class="p">])</span>
 
             <span class="k">raise</span> <span class="n">APIError</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span> <span class="n">errno</span><span class="o">=</span><span class="n">errno</span><span class="p">,</span>
                            <span class="n">failing_query</span><span class="o">=</span><span class="n">query_root</span><span class="p">)</span>
@@ -1310,7 +1446,9 @@
 <span class="sd">    Do not roll your own.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="Volume.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_object</span><span class="p">):</span>
+<div class="viewcode-block" id="Volume.__init__"><a class="viewcode-back" href="../../netapp.html#netapp.api.Volume.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_object</span><span class="p">,</span> <span class="n">compression</span><span class="p">,</span> <span class="n">inline</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compression_enabled</span> <span class="o">=</span> <span class="n">compression</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inline_compression</span> <span class="o">=</span> <span class="n">inline</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
                                       <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
                                       <span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
@@ -1357,7 +1495,33 @@
             <span class="s1">&#39;maximum-size&#39;</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">owning_vserver_name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
                                                      <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
-                                                     <span class="s1">&#39;owning-vserver-name&#39;</span><span class="p">)</span></div>
+                                                     <span class="s1">&#39;owning-vserver-name&#39;</span><span class="p">)</span>
+        <span class="n">creation_timestamp</span> <span class="o">=</span> <span class="n">_child_get_int</span><span class="p">(</span><span class="n">raw_object</span><span class="p">,</span>
+                                            <span class="s1">&#39;volume-id-attributes&#39;</span><span class="p">,</span>
+                                            <span class="s1">&#39;creation-time&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">creation_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span>
+                <span class="n">creation_timestamp</span><span class="p">,</span>
+                <span class="n">pytz</span><span class="o">.</span><span class="n">timezone</span><span class="p">(</span><span class="n">LOCAL_TIMEZONE</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Volume </span><span class="si">{}</span><span class="s2"> had no valid creation time!&quot;</span>
+                     <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">creation_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">percentage_snapshot_reserve</span> <span class="o">=</span> <span class="n">_child_get_int</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;percentage-snapshot-reserve&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">percentage_snapshot_reserve_used</span> <span class="o">=</span> <span class="n">_child_get_int</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-space-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;percentage-snapshot-reserve-used&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">caching_policy</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span>
+            <span class="n">raw_object</span><span class="p">,</span>
+            <span class="s1">&#39;volume-hybrid-cache-attributes&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;caching-policy&#39;</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="s2">&quot;Volume</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">))</span>
@@ -1441,7 +1605,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.8.0',
+            VERSION:'0.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
