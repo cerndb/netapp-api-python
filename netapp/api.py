@@ -563,7 +563,8 @@ class Server(object):
                       junction_path, export_policy_name=None,
                       percentage_snapshot_reserve=0,
                       compression=True,
-                      inline_compression=True):
+                      inline_compression=True,
+                      caching_policy=None):
         """
         Create a new volume on the NetApp cluster
 
@@ -581,6 +582,9 @@ class Server(object):
 
         if export_policy_name:
             api_call.append(X('export-policy', export_policy_name))
+
+        if caching_policy:
+            api_call.append(X('caching-policy', caching_policy))
 
         self.perform_call(api_call, self.ontap_api_url)
 
@@ -767,37 +771,23 @@ class Server(object):
         """
         Set the export policy of a given volume
         """
-        result = self.perform_call(X('volume-modify-iter',
-                                     X('attributes',
-                                       X('volume-attributes',
-                                         X('volume-export-attributes',
-                                           X('policy', policy_name)))),
-                                     X('query',
-                                       X('volume-attributes',
-                                         X('volume-id-attributes',
-                                           X('name', volume_name))))),
-                                   self.ontap_api_url)
-
-        self.raise_on_non_single_answer(result)
+        self.volume_modify_iter(volume_name,
+                                X('attributes',
+                                  X('volume-attributes',
+                                    X('volume-export-attributes',
+                                      X('policy', policy_name)))))
 
     def set_volume_snapshot_reserve(self, volume_name, reserve_percent):
         """
         Set a volume's reserved snapshot space (in percent).
         """
 
-        result = self.perform_call(X('volume-modify-iter',
-                                     X('attributes',
-                                       X('volume-attributes',
-                                         X('volume-space-attributes',
-                                           X('percentage-snapshot-reserve',
-                                             str(reserve_percent))))),
-                                     X('query',
-                                       X('volume-attributes',
-                                         X('volume-id-attributes',
-                                           X('name', volume_name))))),
-                                   self.ontap_api_url)
-
-        self.raise_on_non_single_answer(result)
+        self.volume_modify_iter(volume_name,
+                                X('attributes',
+                                  X('volume-attributes',
+                                    X('volume-space-attributes',
+                                      X('percentage-snapshot-reserve',
+                                        str(reserve_percent))))))
 
     @property
     def aggregates(self):
@@ -950,17 +940,9 @@ class Server(object):
         sure you are on the correct vserver using with_vserver() or
         similar!
         """
-        api_call = X('volume-modify-iter',
-                     X('attributes',
-                       X('volume-attributes',
-                         X('volume-state-attributes',
-                           X('state', 'offline')))),
-                     X('query',
-                       X('volume-attributes',
-                         X('volume-id-attributes',
-                           X('name', volume_name)))))
-        result = self.perform_call(api_call, self.ontap_api_url)
-        self.raise_on_non_single_answer(result)
+        self.volume_modify_iter(volume_name, X('volume-attributes',
+                                               X('volume-state-attributes',
+                                                 X('state', 'offline'))))
 
     def extract_failures(self, result):
         """
@@ -1031,6 +1013,33 @@ class Server(object):
                         X('new-size', str(new_size)))
 
         self.perform_call(resize_call, self.ontap_api_url)
+
+    def volume_modify_iter(self, volume_name, *attributes):
+        """
+        Make a call to volume-modify-iter with the provided attributes.
+        """
+        api_call = X('volume-modify-iter',
+                     X('attributes', *attributes),
+                     X('query',
+                       X('volume-attributes',
+                         X('volume-id-attributes',
+                           X('name', volume_name)))))
+        result = self.perform_call(api_call, self.ontap_api_url)
+        self.raise_on_non_single_answer(result)
+        return result
+
+    def set_volume_caching_policy(self, volume_name, policy_name):
+        """
+        Set a volume's caching policy. Note that this is _different_
+        from flexcache policies. The NetApp manual is not exactly clear
+        on this, but this is the same attribute as cache-policy when
+        creating volumes.
+        """
+
+        self.volume_modify_iter(volume_name,
+                                X('volume-attributes',
+                                  X('volume-hybrid-cache-attributes',
+                                    X('caching-policy', policy_name))))
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
@@ -1369,6 +1378,11 @@ class Volume(object):
             raw_object,
             'volume-space-attributes',
             'percentage-snapshot-reserve-used')
+
+        self.caching_policy = _child_get_string(
+            raw_object,
+            'volume-hybrid-cache-attributes',
+            'caching-policy')
 
     def __str__(self):
         return str("Volume{}".format(self.__dict__))
