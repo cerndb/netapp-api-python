@@ -87,7 +87,8 @@ VOL_FIELDS = [X('volume-id-attributes',
                 *[X(x) for x in ['is-enabled', 'maximum-size',
                                  'increment-size']]),
               X('volume-state-attributes', X('state')),
-              X('volume-export-attributes', X('policy'))]
+              X('volume-export-attributes', X('policy')),
+              X('volume-hybrid-cache-attributes', X('caching-policy'))]
 
 
 def _read_bool(s):
