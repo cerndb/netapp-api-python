@@ -820,3 +820,12 @@ def test_set_snapshot_reserve(ontap_server):
                                                    reserve_percent=37)
             vol = server.volumes.single(volume_name=volume_name)
             assert vol.percentage_snapshot_reserve == 37
+
+
+def test_get_cache_policy(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('get_cache_policy'):
+        with ephermeral_volume(server) as volume_name:
+            vol = server.volumes.single(volume_name=volume_name)
+            assert vol.caching_policy == 'default' or vol.caching_policy is None
