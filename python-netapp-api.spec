@@ -4,7 +4,7 @@
 Summary: NetApp OCUM API wrapper
 Name: python-netapp-api
 Version: 0.9.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 Source0: %{name}-%{version}.tar.gz
 License: GPLv3
 Group: Development/Libraries
@@ -54,9 +54,11 @@ rm -rf $RPM_BUILD_ROOT
 %files -n python2-%{srcname}
 %doc README.md
 %{python2_sitelib}/*
+%{_bindir}/ontap_tool
 %defattr(-,root,root,-)
 
 %files -n python3-%{srcname}
 %doc README.md
 %{python3_sitelib}/*
+%{_bindir}/ontap_tool
 %defattr(-,root,root)
