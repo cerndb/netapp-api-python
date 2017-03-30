@@ -77,14 +77,18 @@ VOL_FIELDS = [X('volume-id-attributes',
                 *[X(x) for x in
                   ['name', 'uuid', 'junction-path',
                    'containing-aggregate-name',
-                   'node', 'owning-vserver-name']]),
+                   'node', 'owning-vserver-name',
+                   'creation-time']]),
               X('volume-space-attributes',
-                *[X(x) for x in ['size-total', 'size-used']]),
+                *[X(x) for x in ['size-total', 'size-used',
+                                 'percentage-snapshot-reserve',
+                                 'percentage-snapshot-reserve-used']]),
               X('volume-autosize-attributes',
                 *[X(x) for x in ['is-enabled', 'maximum-size',
                                  'increment-size']]),
               X('volume-state-attributes', X('state')),
-              X('volume-export-attributes', X('policy'))]
+              X('volume-export-attributes', X('policy')),
+              X('volume-hybrid-cache-attributes', X('caching-policy'))]
 
 
 def _read_bool(s):
@@ -114,7 +118,7 @@ def _child_get_int(parent, *string_hierarchy):
 
     try:
         return int(_child_get_string(parent, *string_hierarchy))
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -135,11 +139,10 @@ def _child_get_strings(parent, *string_hierarchy):
     """
     string_name = "/a:".join(string_hierarchy)
 
-    xpath_query = 'a:%s/text()' % string_name
-
-    matches = parent.xpath(xpath_query,
-                           namespaces={'a': XMLNS})
-    return matches
+    query = 'a:%s' % string_name
+    matches = parent.findall(query,
+                             namespaces={'a': XMLNS})
+    return [m.text for m in matches]
 
 
 def _child_get_string(parent, *string_hierarchy):
@@ -154,10 +157,9 @@ def _child_get_string(parent, *string_hierarchy):
 
     This function strictly assumes either 1 or 0 matches (empty string)
     """
-    matches = _child_get_strings(parent, *string_hierarchy)
-    assert len(matches) < 2, "Should only match at most one string value!"
-
-    return matches[0] if matches else ""
+    target = "/a:".join(string_hierarchy)
+    return parent.findtext("a:{}".format(target),
+                           namespaces={'a': XMLNS})
 
 
 def _child_get_kv_dict(parent, string_name):
@@ -325,6 +327,67 @@ class Server(object):
             # Applying an empty filter <==> get everything
             return self.filter()
 
+        def single(self, volume_name, vserver=None):
+            """
+            Return a single volume, raising a IndexError if no volume matched.
+            """
+            if vserver:
+                volumes = list(self.filter(name=volume_name, vserver=vserver))
+            else:
+                volumes = list(self.filter(name=volume_name))
+            return volumes[0]
+
+        def make_volume(self, attributes_list):
+            name = _child_get_string(attributes_list,
+                                     'volume-id-attributes',
+                                     'name')
+            vserver = _child_get_string(attributes_list,
+                                        'volume-id-attributes',
+                                        'owning-vserver-name')
+
+            sis_path = "/vol/{}".format(name)
+            sis_api_call = X('sis-get-iter',
+                             X('desired-attributes',
+                               X('sis-status-info',
+                                 X('is-compression-enabled'),
+                                 X('is-inline-compression-enabled'))),
+                             X('query',
+                               X('sis-status-info',
+                                 X('path', sis_path),
+                                 X('vserver', vserver))))
+
+            def extract_compression(attributes_list):
+                compression_enabled = _read_bool(_child_get_string(
+                    attributes_list,
+                    'is-compression-enabled'))
+
+                inline_enabled = _read_bool(_child_get_string(
+                    attributes_list,
+                    'is-inline-compression-enabled'))
+
+                return compression_enabled, inline_enabled
+
+            result = self.server._get_paginated(
+                api_call=sis_api_call,
+                endpoint='ONTAP',
+                constructor=extract_compression,
+                container_tag='attributes-list')
+
+            try:
+                compression, inline = next(result)
+            except StopIteration:
+                # If we didn't get any hits, it meant the entire SIS
+                # subsystem was disabled, and thus compression *cannot*
+                # be enabled.
+                #
+                # This is not documented anywhere.
+                log.info("SIS was disabled for volume {}. Compression = off"
+                         .format(name))
+                compression, inline = (False, False)
+
+            return Volume(attributes_list, compression=compression,
+                          inline=inline)
+
         def filter(self, max_records=None, **query):
             """
             Usage:
@@ -363,7 +426,7 @@ class Server(object):
             return self.server._get_paginated(
                 api_call,
                 endpoint='ONTAP',
-                constructor=Volume,
+                constructor=self.make_volume,
                 container_tag="attributes-list")
 
     class ExportPolicy(object):
@@ -499,7 +562,10 @@ class Server(object):
 
     def create_volume(self, name, size_bytes, aggregate_name,
                       junction_path, export_policy_name=None,
-                      percentage_snapshot_reserve=0):
+                      percentage_snapshot_reserve=0,
+                      compression=True,
+                      inline_compression=True,
+                      caching_policy=None):
         """
         Create a new volume on the NetApp cluster
 
@@ -518,7 +584,13 @@ class Server(object):
         if export_policy_name:
             api_call.append(X('export-policy', export_policy_name))
 
+        if caching_policy:
+            api_call.append(X('caching-policy', caching_policy))
+
         self.perform_call(api_call, self.ontap_api_url)
+
+        self.set_compression(volume_name=name, enabled=compression,
+                             inline=inline_compression)
 
     def create_snapshot(self, volume_name, snapshot_name):
         """
@@ -700,18 +772,23 @@ class Server(object):
         """
         Set the export policy of a given volume
         """
-        result = self.perform_call(X('volume-modify-iter',
-                                     X('attributes',
-                                       X('volume-attributes',
-                                         X('volume-export-attributes',
-                                           X('policy', policy_name)))),
-                                     X('query',
-                                       X('volume-attributes',
-                                         X('volume-id-attributes',
-                                           X('name', volume_name))))),
-                                   self.ontap_api_url)
+        self.volume_modify_iter(volume_name,
+                                X('attributes',
+                                  X('volume-attributes',
+                                    X('volume-export-attributes',
+                                      X('policy', policy_name)))))
 
-        self.raise_on_non_single_answer(result)
+    def set_volume_snapshot_reserve(self, volume_name, reserve_percent):
+        """
+        Set a volume's reserved snapshot space (in percent).
+        """
+
+        self.volume_modify_iter(volume_name,
+                                X('attributes',
+                                  X('volume-attributes',
+                                    X('volume-space-attributes',
+                                      X('percentage-snapshot-reserve',
+                                        str(reserve_percent))))))
 
     @property
     def aggregates(self):
@@ -838,15 +915,17 @@ class Server(object):
         If vserver is none or the empty string, switch to cluster mode.
         """
         old_vfiler = self.vfiler
+        log.debug("Temporarily setting vfiler to {}".format(vserver))
         self.vfiler = vserver
         yield
+        log.debug("Restoring vfiler to {}".format(old_vfiler))
         self.vfiler = old_vfiler
 
     def destroy_volume(self, volume_name):
         """
         Permamently delete a volume. Must be offline.
         """
-
+        log.info("Deleting volume {}".format(volume_name))
         result = self.perform_call(X('volume-destroy',
                                      X('name', volume_name)),
                                    self.ontap_api_url)
@@ -862,17 +941,9 @@ class Server(object):
         sure you are on the correct vserver using with_vserver() or
         similar!
         """
-        api_call = X('volume-modify-iter',
-                     X('attributes',
-                       X('volume-attributes',
-                         X('volume-state-attributes',
-                           X('state', 'offline')))),
-                     X('query',
-                       X('volume-attributes',
-                         X('volume-id-attributes',
-                           X('name', volume_name)))))
-        result = self.perform_call(api_call, self.ontap_api_url)
-        self.raise_on_non_single_answer(result)
+        self.volume_modify_iter(volume_name, X('volume-attributes',
+                                               X('volume-state-attributes',
+                                                 X('state', 'offline'))))
 
     def extract_failures(self, result):
         """
@@ -905,6 +976,71 @@ class Server(object):
             raise APIError(message=("Unexpected answer: got"
                                     " {} results, {} failures!"
                                     .format(num_successes, num_failures)))
+
+    def set_compression(self, volume_name, enabled=True, inline=True):
+        ERR_ALREADY_ENABLED = 13001
+
+        if not enabled and inline:
+            raise ValueError("Inline compression cannot be enabled alone!")
+
+        path = "/vol/{}".format(volume_name)
+
+        sis_enable_call = X('sis-enable',
+                            X('path', path))
+        sis_set_config_call = X('sis-set-config',
+                                X('enable-compression', str(enabled).lower()),
+                                X('enable-inline-compression', (str(inline)
+                                                                .lower())),
+                                X('path', path))
+
+        try:
+
+            self.perform_call(sis_enable_call, self.ontap_api_url)
+        except APIError as e:
+            if e.errno == ERR_ALREADY_ENABLED:
+                log.info("SIS already enabled for {}".format(volume_name))
+            else:
+                raise e
+
+        self.perform_call(sis_set_config_call, self.ontap_api_url)
+
+    def resize_volume(self, volume_name, new_size):
+        """
+        Resize the volume. Size follows the same conventions as for
+        create_volume.
+        """
+        resize_call = X('volume-size',
+                        X('volume', volume_name),
+                        X('new-size', str(new_size)))
+
+        self.perform_call(resize_call, self.ontap_api_url)
+
+    def volume_modify_iter(self, volume_name, *attributes):
+        """
+        Make a call to volume-modify-iter with the provided attributes.
+        """
+        api_call = X('volume-modify-iter',
+                     X('attributes', *attributes),
+                     X('query',
+                       X('volume-attributes',
+                         X('volume-id-attributes',
+                           X('name', volume_name)))))
+        result = self.perform_call(api_call, self.ontap_api_url)
+        self.raise_on_non_single_answer(result)
+        return result
+
+    def set_volume_caching_policy(self, volume_name, policy_name):
+        """
+        Set a volume's caching policy. Note that this is _different_
+        from flexcache policies. The NetApp manual is not exactly clear
+        on this, but this is the same attribute as cache-policy when
+        creating volumes.
+        """
+
+        self.volume_modify_iter(volume_name,
+                                X('volume-attributes',
+                                  X('volume-hybrid-cache-attributes',
+                                    X('caching-policy', policy_name))))
 
     def __init__(self, hostname, username, password, port=443,
                  transport_type="HTTPS", server_type="OCUM",
@@ -1072,8 +1208,8 @@ class Server(object):
             reason = response.xpath('/a:netapp/a:results/@reason',
                                     namespaces={'a': XMLNS})[0]
 
-            errno = response.xpath('/a:netapp/a:results/@errno',
-                                   namespaces={'a': XMLNS})[0]
+            errno = int(response.xpath('/a:netapp/a:results/@errno',
+                                       namespaces={'a': XMLNS})[0])
 
             raise APIError(message=reason, errno=errno,
                            failing_query=query_root)
@@ -1172,7 +1308,9 @@ class Volume(object):
     Do not roll your own.
     """
 
-    def __init__(self, raw_object):
+    def __init__(self, raw_object, compression, inline):
+        self.compression_enabled = compression
+        self.inline_compression = inline
         self.uuid = _child_get_string(raw_object,
                                       'volume-id-attributes',
                                       'uuid')
@@ -1220,6 +1358,32 @@ class Volume(object):
         self.owning_vserver_name = _child_get_string(raw_object,
                                                      'volume-id-attributes',
                                                      'owning-vserver-name')
+        creation_timestamp = _child_get_int(raw_object,
+                                            'volume-id-attributes',
+                                            'creation-time')
+        try:
+            self.creation_time = datetime.fromtimestamp(
+                creation_timestamp,
+                pytz.timezone(LOCAL_TIMEZONE))
+        except TypeError:
+            log.info("Volume {} had no valid creation time!"
+                     .format(self.name))
+            self.creation_time = None
+
+        self.percentage_snapshot_reserve = _child_get_int(
+            raw_object,
+            'volume-space-attributes',
+            'percentage-snapshot-reserve')
+
+        self.percentage_snapshot_reserve_used = _child_get_int(
+            raw_object,
+            'volume-space-attributes',
+            'percentage-snapshot-reserve-used')
+
+        self.caching_policy = _child_get_string(
+            raw_object,
+            'volume-hybrid-cache-attributes',
+            'caching-policy')
 
     def __str__(self):
         return str("Volume{}".format(self.__dict__))

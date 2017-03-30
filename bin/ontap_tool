@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import netapp.api
+
+import os
+import re
+import argparse
+import logging
+from six.moves import input
+
+import requests
+
+log = logging.getLogger()
+
+
+def list_volumes(s, vserver, args):
+    include = re.compile(args.filter)
+    for vol in s.volumes:
+        if not include.match(vol.name):
+            continue
+        if vol.node_name and vol.junction_path:
+            print("{}:{} ({})".format(vol.node_name,
+                                      vol.junction_path, vol.name))
+        else:
+            print("Not mounted: {}".format(vol.name))
+
+
+def delete_volumes(s, vserver, args):
+    log.debug("DELETING VOLUMES")
+    include = re.compile(args.name_regex)
+    volumes_to_kill = []
+    with s.with_vserver(vserver):
+        for volume in s.volumes:
+            if not include.match(volume.name):
+                continue
+            else:
+                volumes_to_kill.append(volume.name)
+
+    print("Will delete these {} volumes: {}".format(
+        len(volumes_to_kill), ", ".join(volumes_to_kill)))
+    if input("Is this OK y/n? ").lower() == "y" and len(volumes_to_kill) > 0:
+        with s.with_vserver(vserver):
+            for volume_name in volumes_to_kill:
+                try:
+                    s.unmount_volume(volume_name)
+                    s.take_volume_offline(volume_name)
+                except netapp.api.APIError:
+                    pass
+                s.destroy_volume(volume_name)
+    else:
+        print("No volumes were deleted")
+
+
+def show_volume(s, args):
+    try:
+        volume = next(s.volumes.filter(name=args.name))
+        print(volume)
+    except StopIteration:
+        print("No such volume: {}".format(args.name))
+        exit(1)
+    return volume
+
+
+if __name__ == '__main__':
+    ONTAP_VSERVER = os.environ.get('ONTAP_VSERVER')
+    server_host = os.environ.get('ONTAP_HOST')
+    server_username = os.environ.get('ONTAP_USERNAME')
+    server_password = os.environ.get('ONTAP_PASSWORD')
+    requests.packages.urllib3.disable_warnings()
+
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    log.addHandler(ch)
+
+    parser = argparse.ArgumentParser(description="NetApp Filer Operations")
+    parser.add_argument('--verbose', '-v', action='count', dest='verbose_count',
+                        default=0)
+    subparsers = parser.add_subparsers(title='namespaces', help="valid namespaces")
+
+    parser_volume = subparsers.add_parser('volume',
+                                          help='volume-related operations')
+    vol_subparsers = parser_volume.add_subparsers(title="commands")
+
+    vol_list = vol_subparsers.add_parser('list', help="list volumes")
+    vol_list.add_argument('filter', metavar='filter_query', type=str,
+                          nargs='?',
+                          default="",
+                          help='a filter query')
+    vol_list.set_defaults(func=list_volumes)
+    s = netapp.api.Server(hostname=server_host, username=server_username,
+                          password=server_password)
+
+    vol_delete = vol_subparsers.add_parser('delete', help="delete volume(s)")
+    vol_delete.add_argument('name_regex', metavar='name_regex', type=str,
+                            default="",
+                            help='Regex matching the name of the volume to delete')
+    vol_delete.set_defaults(func=delete_volumes)
+
+    args = parser.parse_args()
+
+    log_level = (max(3 - args.verbose_count, 0) * 10)
+    log.setLevel(log_level)
+    args.func(s=s, vserver=ONTAP_VSERVER, args=args)
