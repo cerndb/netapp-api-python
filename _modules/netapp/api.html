@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>netapp.api &mdash; netapp-api 0.9.0 documentation</title>
+  <title>netapp.api &mdash; netapp-api 0.10.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="netapp-api 0.9.0 documentation" href="../../index.html"/>
+    <link rel="top" title="netapp-api 0.10.0 documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.9.0
+                0.10.0
               </div>
             
           
@@ -932,9 +932,12 @@
     <span class="k">def</span> <span class="nf">aggregates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A Generator of named tuples describing aggregates on the cluster.</span>
+
+<span class="sd">        If in vserver mode, list that vserver&#39;s aggregates. If in</span>
+<span class="sd">        cluster mode, list the entire cluster&#39;s aggregates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">def</span> <span class="nf">unpack_aggregate</span><span class="p">(</span><span class="n">aggregate_info</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">unpack_cluster_aggregate</span><span class="p">(</span><span class="n">aggregate_info</span><span class="p">):</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">aggregate_info</span><span class="p">,</span> <span class="s1">&#39;aggregate-name&#39;</span><span class="p">)</span>
             <span class="n">node_names</span> <span class="o">=</span> <span class="n">_child_get_strings</span><span class="p">(</span><span class="n">aggregate_info</span><span class="p">,</span>
                                             <span class="s1">&#39;nodes&#39;</span><span class="p">,</span>
@@ -949,16 +952,40 @@
                              <span class="n">bytes_used</span><span class="o">=</span><span class="n">bytes_used</span><span class="p">,</span>
                              <span class="n">bytes_available</span><span class="o">=</span><span class="n">bytes_available</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggr-get-iter&#39;</span><span class="p">,</span>
-                                     <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
-                                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggregate-name&#39;</span><span class="p">),</span>
-                                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggregate-space-attributes&#39;</span><span class="p">,</span>
-                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;size-used&#39;</span><span class="p">),</span>
-                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;size-available&#39;</span><span class="p">)),</span>
-                                       <span class="n">X</span><span class="p">(</span><span class="s1">&#39;nodes&#39;</span><span class="p">))),</span>
-                                   <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
-                                   <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">,</span>
-                                   <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_aggregate</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">unpack_vserver_aggregate</span><span class="p">(</span><span class="n">show_aggregates</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">show_aggregates</span><span class="p">,</span> <span class="s1">&#39;aggregate-name&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Fixme: verify that this size is actually in bytes!</span>
+            <span class="c1"># Documentation doesn&#39;t say.</span>
+            <span class="n">bytes_available</span> <span class="o">=</span> <span class="n">_child_get_int</span><span class="p">(</span><span class="n">show_aggregates</span><span class="p">,</span> <span class="s1">&#39;available-size&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Aggregate</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">bytes_available</span><span class="o">=</span><span class="n">bytes_available</span><span class="p">,</span>
+                             <span class="n">bytes_used</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                             <span class="n">node_names</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">vfiler</span><span class="p">:</span>
+            <span class="c1"># Cluster mode</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggr-get-iter&#39;</span><span class="p">,</span>
+                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggregate-name&#39;</span><span class="p">),</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggregate-space-attributes&#39;</span><span class="p">,</span>
+                                             <span class="n">X</span><span class="p">(</span><span class="s1">&#39;size-used&#39;</span><span class="p">),</span>
+                                             <span class="n">X</span><span class="p">(</span><span class="s1">&#39;size-available&#39;</span><span class="p">)),</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;nodes&#39;</span><span class="p">))),</span>
+                                       <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                                       <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">,</span>
+                                       <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_cluster_aggregate</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">X</span><span class="p">(</span><span class="s1">&#39;vserver-show-aggr-get-iter&#39;</span><span class="p">,</span>
+                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;aggregate-name&#39;</span><span class="p">),</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;available-size&#39;</span><span class="p">)),</span>
+                                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
+                                           <span class="n">X</span><span class="p">(</span><span class="s1">&#39;show-aggregates&#39;</span><span class="p">,</span>
+                                             <span class="n">X</span><span class="p">(</span><span class="s1">&#39;vserver-name&#39;</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">vfiler</span><span class="p">)))),</span>
+                                       <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
+                                       <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">,</span>
+                                       <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_vserver_aggregate</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">vservers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1605,7 +1632,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.9.0',
+            VERSION:'0.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
