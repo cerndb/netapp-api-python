@@ -82,7 +82,7 @@ def ocum_server():
     server_password = os.environ.get('NETAPP_PASSWORD', "password-placeholder")
 
     s = netapp.api.Server(hostname=server_host, username=server_username,
-                          password=server_password)
+                          password=server_password, timeout_s=10)
 
     recorder = betamax.Betamax(s.session)
     yield (recorder, s)
@@ -829,3 +829,12 @@ def test_get_cache_policy(ontap_server):
         with ephermeral_volume(server) as volume_name:
             vol = server.volumes.single(volume_name=volume_name)
             assert vol.caching_policy == 'default' or vol.caching_policy is None
+
+
+def test_get_aggregates_vfiler_mode(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('get_aggregates_vfiler_mode'):
+        with server.with_vserver(ONTAP_VSERVER):
+            aggregates = list(server.aggregates)
+            assert aggregates

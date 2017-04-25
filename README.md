@@ -57,6 +57,7 @@ for event in s.events.filter(max_records=4):
 1. `mkvirtualenv netapp-api-python`
 2. `workon netapp-api-python`
 3. `pip install -r requirements.txt`
+4. `python setup.py develop`
 
 
 ## Testing

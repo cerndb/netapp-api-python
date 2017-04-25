@@ -794,9 +794,12 @@ class Server(object):
     def aggregates(self):
         """
         A Generator of named tuples describing aggregates on the cluster.
+
+        If in vserver mode, list that vserver's aggregates. If in
+        cluster mode, list the entire cluster's aggregates.
         """
 
-        def unpack_aggregate(aggregate_info):
+        def unpack_cluster_aggregate(aggregate_info):
             name = _child_get_string(aggregate_info, 'aggregate-name')
             node_names = _child_get_strings(aggregate_info,
                                             'nodes',
@@ -811,16 +814,40 @@ class Server(object):
                              bytes_used=bytes_used,
                              bytes_available=bytes_available)
 
-        return self._get_paginated(X('aggr-get-iter',
-                                     X('desired-attributes',
-                                       X('aggregate-name'),
-                                       X('aggregate-space-attributes',
-                                         X('size-used'),
-                                         X('size-available')),
-                                       X('nodes'))),
-                                   endpoint='ONTAP',
-                                   container_tag='attributes-list',
-                                   constructor=unpack_aggregate)
+        def unpack_vserver_aggregate(show_aggregates):
+            name = _child_get_string(show_aggregates, 'aggregate-name')
+
+            # Fixme: verify that this size is actually in bytes!
+            # Documentation doesn't say.
+            bytes_available = _child_get_int(show_aggregates, 'available-size')
+            return Aggregate(name=name, bytes_available=bytes_available,
+                             bytes_used=None,
+                             node_names=None)
+
+        if not self.vfiler:
+            # Cluster mode
+            return self._get_paginated(X('aggr-get-iter',
+                                         X('desired-attributes',
+                                           X('aggregate-name'),
+                                           X('aggregate-space-attributes',
+                                             X('size-used'),
+                                             X('size-available')),
+                                           X('nodes'))),
+                                       endpoint='ONTAP',
+                                       container_tag='attributes-list',
+                                       constructor=unpack_cluster_aggregate)
+        else:
+            return self._get_paginated(X('vserver-show-aggr-get-iter',
+                                         X('desired-attributes',
+                                           X('aggregate-name'),
+                                           X('available-size')),
+                                         X('query',
+                                           X('show-aggregates',
+                                             X('vserver-name',
+                                               self.vfiler)))),
+                                       endpoint='ONTAP',
+                                       container_tag='attributes-list',
+                                       constructor=unpack_vserver_aggregate)
 
     @property
     def vservers(self):
