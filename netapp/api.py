@@ -773,10 +773,9 @@ class Server(object):
         Set the export policy of a given volume
         """
         self.volume_modify_iter(volume_name,
-                                X('attributes',
-                                  X('volume-attributes',
-                                    X('volume-export-attributes',
-                                      X('policy', policy_name)))))
+                                X('volume-attributes',
+                                  X('volume-export-attributes',
+                                    X('policy', policy_name))))
 
     def set_volume_snapshot_reserve(self, volume_name, reserve_percent):
         """
@@ -784,11 +783,9 @@ class Server(object):
         """
 
         self.volume_modify_iter(volume_name,
-                                X('attributes',
-                                  X('volume-attributes',
-                                    X('volume-space-attributes',
-                                      X('percentage-snapshot-reserve',
-                                        str(reserve_percent))))))
+                                X('volume-space-attributes',
+                                  X('percentage-snapshot-reserve',
+                                    str(reserve_percent))))
 
     @property
     def aggregates(self):
