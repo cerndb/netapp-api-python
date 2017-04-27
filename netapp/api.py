@@ -783,9 +783,10 @@ class Server(object):
         """
 
         self.volume_modify_iter(volume_name,
-                                X('volume-space-attributes',
-                                  X('percentage-snapshot-reserve',
-                                    str(reserve_percent))))
+                                X('volume-attributes',
+                                  X('volume-space-attributes',
+                                    X('percentage-snapshot-reserve',
+                                      str(reserve_percent)))))
 
     @property
     def aggregates(self):
