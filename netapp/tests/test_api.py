@@ -828,7 +828,8 @@ def test_get_cache_policy(ontap_server):
     with recorder.use_cassette('get_cache_policy'):
         with ephermeral_volume(server) as volume_name:
             vol = server.volumes.single(volume_name=volume_name)
-            assert vol.caching_policy == 'default' or vol.caching_policy is None
+            assert (vol.caching_policy == 'default' or vol.caching_policy
+                    is None)
 
 
 def test_get_aggregates_vfiler_mode(ontap_server):
@@ -838,3 +839,15 @@ def test_get_aggregates_vfiler_mode(ontap_server):
         with server.with_vserver(ONTAP_VSERVER):
             aggregates = list(server.aggregates)
             assert aggregates
+
+
+def test_create_policy_with_invalid_rules_not_created(ontap_server):
+    recorder, server = ontap_server
+
+    with recorder.use_cassette('create_invalid_export_policy_rule'):
+        with server.with_vserver(ONTAP_VSERVER):
+            invalid_rules = ["burk@spenat@gurka++1242"]
+            policy_name = "test_policy_asdf_hjkl_14"
+            with pytest.raises(netapp.api.APIError):
+                server.create_export_policy(policy_name, rules=invalid_rules)
+            assert policy_name not in server.export_policies
