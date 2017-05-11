@@ -656,9 +656,15 @@ class Server(object):
         id = _child_get_string(result[0], 'export-policy-info',
                                'policy-id')
 
-        if rules is not None:
-            for index, rule in enumerate(rules, start=1):
-                self.add_export_rule(policy_name, rule, index=index)
+        try:
+            if rules is not None:
+                for index, rule in enumerate(rules, start=1):
+                    self.add_export_rule(policy_name, rule, index=index)
+        except APIError as e:
+            # The rule was probably invalid, roll back
+            self.delete_export_policy(policy_name)
+            # ...and re-raise the error
+            raise e
 
         return name, id
 
