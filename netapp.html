@@ -175,7 +175,7 @@
 <dl class="exception">
 <dt id="netapp.api.APIError">
 <em class="property">exception </em><code class="descclassname">netapp.api.</code><code class="descname">APIError</code><span class="sig-paren">(</span><em>message=''</em>, <em>errno='{no error #}'</em>, <em>failing_query=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#APIError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.APIError" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">Exception</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
 <p>An Exception logging an api-related error and its context. Note that
 an APIError typically occurs <em>after</em> a successful transfer of a
 command to the API itself.</p>
@@ -794,7 +794,7 @@ similar!</p>
 
 <dl class="method">
 <dt id="netapp.api.Server.with_vserver">
-<code class="descname">with_vserver</code><span class="sig-paren">(</span><em>vserver</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.with_vserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.with_vserver" title="Permalink to this definition">¶</a></dt>
+<code class="descname">with_vserver</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netapp/api.html#Server.with_vserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#netapp.api.Server.with_vserver" title="Permalink to this definition">¶</a></dt>
 <dd><p>A Context to temporarily set the vserver/vfiler (it’s the same
 thing) during a set of operations, and then reset it to cluster
 mode (or whatever vserver it was configured to use previously)
@@ -975,7 +975,7 @@ minimum to avoid confusion in the event of API changes.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.netapp">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'netapp')</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">netapp</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.netapp" title="Permalink to this definition">¶</a></dt>
 <dd><p>The root element for any query.</p>
 </dd></dl>
 
@@ -993,7 +993,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.source">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'source')</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">source</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resource or group.</p>
 </dd></dl>
 
@@ -1005,7 +1005,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.tag">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'tag')</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">tag</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.tag" title="Permalink to this definition">¶</a></dt>
 <dd><p>The tag from the last call, if processing paginated data.</p>
 </dd></dl>
 
@@ -1026,7 +1026,7 @@ status.</p>
 
 <dl class="data">
 <dt id="netapp.vocabulary.timeout">
-<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = functools.partial(&lt;lxml.builder.ElementMaker object&gt;, 'timeout')</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">netapp.vocabulary.</code><code class="descname">timeout</code><em class="property"> = &lt;functools.partial object&gt;</em><a class="headerlink" href="#netapp.vocabulary.timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>The timeout for an operation: <code class="docutils literal"><span class="pre">&lt;timeout&gt;x&lt;/timeout&gt;</span></code>.</p>
 </dd></dl>
 
