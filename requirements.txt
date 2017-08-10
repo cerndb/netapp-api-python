@@ -1,12 +1,12 @@
-pytest==3.0.2
-Sphinx==1.4.8
-pytz==2016.6.1
-requests==2.11.1
-lxml==3.6.4
+pytest==3.2.1 # Updated from 3.0.2
+Sphinx==1.6.3 # Updated from 1.4.8
+pytz==2017.2 # Updated from 2016.6.1
+requests==2.18.3 # Updated from 2.11.1
+lxml==3.8.0 # Updated from 3.6.4
 pytest-cov == 2.3.1
 recommonmark==0.4.0
-sphinx-rtd-theme==0.1.9
+sphinx-rtd-theme==0.2.4 # Updated from 0.1.9
 pytest-logging==2015.11.4
-six
+six==1.10.0
 betamax==0.8.0
 betamax-serializers==0.2.0

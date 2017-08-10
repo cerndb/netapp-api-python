@@ -8,8 +8,11 @@ betamax.Betamax.register_serializer(pretty_json.PrettyJSONSerializer)
 
 netapp_username = os.environ.get('NETAPP_USERNAME', "user-placeholder")
 netapp_password = os.environ.get('NETAPP_PASSWORD', "password-placeholder")
+netapp_hostname = os.environ.get('NETAPP_HOST', 'db-51195')
 ontap_username = os.environ.get('ONTAP_USERNAME', 'user-placeholder')
 ontap_password = os.environ.get('ONTAP_PASSWORD', 'password-placeholder')
+ontap_hostname = os.environ.get('ONTAP_HOST', 'dbnasa-cluster-mgmt')
+ontap_vserver = os.environ.get('ONTAP_VSERVER', 'vs1rac11')
 
 
 def pytest_addoption(parser):
@@ -45,3 +48,7 @@ with betamax.Betamax.configure() as config:
                                             .format(ontap_username,
                                                     ontap_password)).encode('utf-8'))
                                        .decode('utf-8'))
+
+    config.define_cassette_placeholder('<ONTAP-HOST>', ontap_hostname)
+    config.define_cassette_placeholder('<NETAPP-HOST>', netapp_hostname)
+    config.define_cassette_placeholder('<ONTAP-VSERVER>', ontap_vserver)

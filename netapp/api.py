@@ -471,17 +471,24 @@ class Server(object):
         api_call = X('snapshot-get-iter',
                      X('desired-attributes',
                        X('snapshot-info',
-                         X('name'))),
+                         X('name'),
+                         X('access-time'),
+                         X('total'))),
                      X('query',
                        X('snapshot-info',
                          X('volume', str(volume_name)))))
 
-        def unpack_name(snapshot_info):
-            return _child_get_string(snapshot_info, 'name')
+        def unpack_snapshot(snapshot_info):
+            return Snapshot(
+                name=_child_get_string(snapshot_info, 'name'),
+                creation_time=datetime.fromtimestamp(
+                    _child_get_int(snapshot_info, 'access-time'),
+                    pytz.timezone(LOCAL_TIMEZONE)),
+                size_kbytes=_child_get_int(snapshot_info, 'total'))
 
         return self._get_paginated(api_call,
                                    endpoint='ONTAP',
-                                   constructor=unpack_name,
+                                   constructor=unpack_snapshot,
                                    container_tag='attributes-list')
 
     @property
@@ -1431,6 +1438,7 @@ Lock = namedtuple('Lock', 'volume, state, client_address')
 Aggregate = namedtuple('Aggregate',
                        'name, node_names, bytes_used, bytes_available')
 Vserver = namedtuple('Vserver', 'name, state, uuid, aggregate_names')
+Snapshot = namedtuple('Snapshot', 'name, creation_time, size_kbytes')
 
 
 class APIError(Exception):
