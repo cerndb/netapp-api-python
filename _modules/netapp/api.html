@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>netapp.api &mdash; netapp-api 0.10.3 documentation</title>
+  <title>netapp.api &mdash; netapp-api 1.0.0 documentation</title>
   
 
+  
+  
   
   
 
@@ -33,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="netapp-api 0.10.3 documentation" href="../../index.html"/>
+    <link rel="top" title="netapp-api 1.0.0 documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -43,6 +45,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -62,7 +65,7 @@
             
             
               <div class="version">
-                0.10.3
+                1.0.0
               </div>
             
           
@@ -83,7 +86,10 @@
           
             
             
-                <ul>
+              
+            
+            
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../README.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../README.html#examples">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../README.html#setup">Setup</a></li>
@@ -103,8 +109,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../index.html">netapp-api</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">netapp-api</a>
+        
       </nav>
 
 
@@ -117,19 +125,36 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="../../index.html">Docs</a> &raquo;</li>
-      
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-      
-    <li>netapp.api</li>
+        
+      <li>netapp.api</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
+            
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -609,17 +634,24 @@
         <span class="n">api_call</span> <span class="o">=</span> <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-get-iter&#39;</span><span class="p">,</span>
                      <span class="n">X</span><span class="p">(</span><span class="s1">&#39;desired-attributes&#39;</span><span class="p">,</span>
                        <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-info&#39;</span><span class="p">,</span>
-                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">))),</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">),</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;access-time&#39;</span><span class="p">),</span>
+                         <span class="n">X</span><span class="p">(</span><span class="s1">&#39;total&#39;</span><span class="p">))),</span>
                      <span class="n">X</span><span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span>
                        <span class="n">X</span><span class="p">(</span><span class="s1">&#39;snapshot-info&#39;</span><span class="p">,</span>
                          <span class="n">X</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">volume_name</span><span class="p">)))))</span>
 
-        <span class="k">def</span> <span class="nf">unpack_name</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">_child_get_string</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">unpack_snapshot</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Snapshot</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">_child_get_string</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">),</span>
+                <span class="n">creation_time</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span>
+                    <span class="n">_child_get_int</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">,</span> <span class="s1">&#39;access-time&#39;</span><span class="p">),</span>
+                    <span class="n">pytz</span><span class="o">.</span><span class="n">timezone</span><span class="p">(</span><span class="n">LOCAL_TIMEZONE</span><span class="p">)),</span>
+                <span class="n">size_kbytes</span><span class="o">=</span><span class="n">_child_get_int</span><span class="p">(</span><span class="n">snapshot_info</span><span class="p">,</span> <span class="s1">&#39;total&#39;</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_paginated</span><span class="p">(</span><span class="n">api_call</span><span class="p">,</span>
                                    <span class="n">endpoint</span><span class="o">=</span><span class="s1">&#39;ONTAP&#39;</span><span class="p">,</span>
-                                   <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_name</span><span class="p">,</span>
+                                   <span class="n">constructor</span><span class="o">=</span><span class="n">unpack_snapshot</span><span class="p">,</span>
                                    <span class="n">container_tag</span><span class="o">=</span><span class="s1">&#39;attributes-list&#39;</span><span class="p">)</span></div>
 
     <span class="nd">@property</span>
@@ -1060,8 +1092,8 @@
                                   <span class="s1">&#39;system-api-info&#39;</span><span class="p">,</span>
                                   <span class="s1">&#39;name&#39;</span><span class="p">)</span>
 
-    <span class="nd">@contextmanager</span>
-<div class="viewcode-block" id="Server.with_vserver"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.with_vserver">[docs]</a>    <span class="k">def</span> <span class="nf">with_vserver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vserver</span><span class="p">):</span>
+<div class="viewcode-block" id="Server.with_vserver"><a class="viewcode-back" href="../../netapp.html#netapp.api.Server.with_vserver">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">with_vserver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vserver</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A Context to temporarily set the vserver/vfiler (it&#39;s the same</span>
 <span class="sd">        thing) during a set of operations, and then reset it to cluster</span>
@@ -1569,6 +1601,7 @@
 <span class="n">Aggregate</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Aggregate&#39;</span><span class="p">,</span>
                        <span class="s1">&#39;name, node_names, bytes_used, bytes_available&#39;</span><span class="p">)</span>
 <span class="n">Vserver</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Vserver&#39;</span><span class="p">,</span> <span class="s1">&#39;name, state, uuid, aggregate_names&#39;</span><span class="p">)</span>
+<span class="n">Snapshot</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Snapshot&#39;</span><span class="p">,</span> <span class="s1">&#39;name, creation_time, size_kbytes&#39;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="APIError"><a class="viewcode-back" href="../../netapp.html#netapp.api.APIError">[docs]</a><span class="k">class</span> <span class="nc">APIError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -1606,6 +1639,9 @@
 </pre></div>
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
@@ -1636,10 +1672,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.3',
+            VERSION:'1.0.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="../../_static/jquery.js"></script>
