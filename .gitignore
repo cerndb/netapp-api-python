@@ -8,3 +8,4 @@
 *.egg-info
 /prof
 /.env.anti
+/cassettes.tar.gz
