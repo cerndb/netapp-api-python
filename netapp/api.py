@@ -753,22 +753,22 @@ class Server(object):
         self.raise_on_non_single_answer(result)
 
     def set_volume_autosize(self, volume_name, autosize_enabled,
-                            max_size_bytes=None, increment_bytes=None):
+                            max_size_bytes=None):
         """
         Update the autosize properties of volume_name.
         """
         enabled_str = "true" if autosize_enabled else "false"
         if autosize_enabled:
-            if not (max_size_bytes and increment_bytes):
+            if not (max_size_bytes):
                 raise TypeError("Must provide max_size_bytes"
-                                " and increment_bytes when enabling autosize!")
+                                " when enabling autosize!")
 
         api_call = X('volume-autosize-set',
                      X('volume', volume_name),
                      X('is-enabled', enabled_str))
         if autosize_enabled:
-            api_call.append(X('increment-size', str(increment_bytes)))
             api_call.append(X('maximum-size', str(max_size_bytes)))
+            api_call.append(X('mode','grow'))
 
         self.perform_call(api_call, self.ontap_api_url)
 
