@@ -585,7 +585,6 @@ def test_ephermeral_volume(ontap_server):
 @pytest.mark.xfail(reason="Is wonky on test filer")
 def test_set_autosize_enable(ontap_server):
     max_size_kb = 100 * 1000 * 1000
-    increment_kb = 10000
     recorder, server = ontap_server
 
     # This makes the same request repeatedly, it seems, so we need
@@ -596,14 +595,11 @@ def test_set_autosize_enable(ontap_server):
                 server.set_volume_autosize(
                     volume_name=vn,
                     max_size_bytes=max_size_kb * 1000,
-                    increment_bytes=increment_kb * 1000,
                     autosize_enabled=True)
                 vol = server.volumes.single(volume_name=vn)
                 assert vol.autosize_enabled
                 # Sometimes there is apparently some rounding
                 # But not a factor 10 too much, we can assume:
-                assert vol.autosize_increment >= increment_kb * 1000
-                assert vol.autosize_increment <= increment_kb * 1000 * 10
                 assert vol.max_autosize >= max_size_kb * 1000
                 assert vol.max_autosize <= max_size_kb * 1000 * 10
 
@@ -617,7 +613,6 @@ def test_set_autosize_disable(ontap_server):
                 server.set_volume_autosize(
                     volume_name=vn,
                     max_size_bytes=1,
-                    increment_bytes=1,
                     autosize_enabled=False)
             vol = server.volumes.single(volume_name=vn)
             assert not vol.autosize_enabled
