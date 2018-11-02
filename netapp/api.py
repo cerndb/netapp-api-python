@@ -84,8 +84,7 @@ VOL_FIELDS = [X('volume-id-attributes',
                                  'percentage-snapshot-reserve',
                                  'percentage-snapshot-reserve-used']]),
               X('volume-autosize-attributes',
-                *[X(x) for x in ['is-enabled', 'maximum-size',
-                                 'increment-size']]),
+                *[X(x) for x in ['is-enabled', 'maximum-size']]),
               X('volume-state-attributes', X('state')),
               X('volume-export-attributes', X('policy')),
               X('volume-hybrid-cache-attributes', X('caching-policy'))]
@@ -1385,10 +1384,6 @@ class Volume(object):
                               'volume-autosize-attributes',
                               'is-enabled'))
 
-        self.autosize_increment = _int_or_none(_child_get_string(
-            raw_object,
-            'volume-autosize-attributes',
-            'increment-size'))
         self.max_autosize = _int_or_none(_child_get_string(
             raw_object,
             'volume-autosize-attributes',
