@@ -60,7 +60,7 @@ X = lxml.builder.ElementMaker()
 log = logging.getLogger(__name__)
 
 ONTAP_MAJORVERSION = 1
-ONTAP_MINORVERSION = 0
+ONTAP_MINORVERSION = 1.180
 OCUM_API_URL = '/apis/XMLrequest'
 ONTAP_API_URL = '/servlets/netapp.servlets.admin.XMLrequest_filer'
 XMLNS = 'http://www.netapp.com/filer/admin'
