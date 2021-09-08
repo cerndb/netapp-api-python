@@ -15,18 +15,19 @@ def read(fname):
 
 
 setup(
-    name="netapp-api",
+    name='netapp-api',
     version=netapp.__version__,
-    author="CERN",
+    author='CERN',
     author_email='albin.stjerna@cern.ch',
     maintainer='Borja Aparicio Cotarelo',
     maintainer_email='borja.aparicio.cotarelo@cern.ch',
-    description=("NetApp OCUM API wrapper"),
+    description='NetApp OCUM API wrapper',
     url='https://github.com/cerndb/netapp-api-python',
-    license="GPLv3",
+    license='GPLv3',
     packages=['netapp'],
     install_requires=['pytz', 'requests', 'lxml', 'six'],
     long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
