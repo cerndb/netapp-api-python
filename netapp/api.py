@@ -272,7 +272,8 @@ class Server(object):
              to 0 if not provided, or if a time interval was provided.
             """
 
-            severities = kwargs.get('severities', None)
+            # IA-2144
+            #severities = kwargs.get('severities', None)
             states = kwargs.get('states', None)
             greater_than_id = kwargs.get('greater_than_id', None)
             time_range = kwargs.get('time_range', None)
@@ -298,9 +299,10 @@ class Server(object):
                 event_states = list(map(V.event_state, states))
                 api_call.append(V.event_state_filter_list(*event_states))
 
-            if severities is not None:
-                obj_statuses = list(map(V.obj_status, severities))
-                api_call.append(V.event_severities(*obj_statuses))
+            # IA-2144 
+            #if severities is not None:
+            #    obj_statuses = list(map(V.obj_status, severities))
+            #    api_call.append(V.event_severities(*obj_statuses))
 
             if max_records is not None:
                 api_call.append(V.max_records(str(max_records)))
@@ -1218,7 +1220,7 @@ class Server(object):
         request = lxml.etree.tostring(query_root, xml_declaration=True,
                                       encoding="UTF-8")
 
-        log.debug("Performing request: %s" % request)
+        print("Performing request: %s" % request)
 
         r = self.session.post(api_url, verify=False, auth=self.auth_tuple,
                               data=request,
@@ -1228,8 +1230,8 @@ class Server(object):
         # FIXME: prettify this handling
         r.raise_for_status()
 
-        log.debug("Response code: %s:\n" % r.status_code)
-        log.debug("XML Response: %s: " %
+        print("Response code: %s:\n" % r.status_code)
+        print("XML Response: %s: " %
                   lxml.etree.tostring(lxml.etree.fromstring(r.content),
                                       pretty_print=True,
                                       encoding="UTF-8"))
